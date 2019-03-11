@@ -628,7 +628,7 @@ def print_label_data(request):
 @csrf_exempt
 @require_POST
 def add_tiled_label(request):
-
+    print(request['POST'])
     request_json = json.load(request)
     
     tiled_label = TiledLabel()
