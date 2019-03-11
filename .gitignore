@@ -1,0 +1,7 @@
+*.pyc
+.idea/*
+*.sql*
+agdss/settings/prod.py
+annotable/*
+static-root/*
+

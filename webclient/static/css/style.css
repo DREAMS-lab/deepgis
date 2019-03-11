@@ -1,0 +1,93 @@
+html, body {
+    /*margin: 0;
+    overflow: hidden;
+    height: 100%; */
+    background-repeat: no-repeat;
+
+
+}
+div #toolbars {
+    visibility: hidden;
+    display:none;
+font-size:13pt;
+font-family:arial;
+}
+/* Scale canvas with resize attribute to full size
+canvas[resize] {
+    width: 80%;
+    height: 80%;
+} */
+
+button #next {
+    type:submit;
+}
+
+div #canvasDiv {
+font-size:13pt;
+font-family:arial;
+}
+
+div #canvasWrapper {
+
+   /* border: 20px inset rgba(0,0,0, 0.5);*/
+    width: 1920px;
+    height: 1080px;
+}
+
+
+#canvas {
+    border: 3px solid black;
+    /*box-shadow: inset 0 0 20px 20px rgba(255,0,0,0.5); */
+
+
+}
+
+
+div #imageControlContainer {
+    padding-top: 75%;
+}
+
+div #imageControl {
+    padding: 2px;
+    border: 1px groove;
+font-size:14pt;
+font-family:arial;
+
+}
+
+#imageControlTd {
+    vertical-align: top;
+}
+
+#debug{
+font-size:15pt;
+font-family:arial;
+font-weight:bold;
+font-style:italic;
+color:#800000;
+}
+#controls{
+font-size:13pt;
+font-family:arial;
+}
+
+#displayTable td,tr{
+    width: 100px;
+}
+
+
+#info{
+    font-size:15pt;
+    font-family:"Helvetica Neue";
+    color:white;
+    background-color: black;
+    opacity:0.7;
+    background-position:center;
+
+
+}
+
+#tips{
+    padding-left: 0px;
+    text-align: left;
+}

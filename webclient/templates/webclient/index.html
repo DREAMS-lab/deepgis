@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>AgDSS Web</title>
+    <!--<link rel="stylesheet" href="/static/scripts/paperjs/examples/css/style.css"> -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script type="text/javascript" src="/static/scripts/paperjs/dist/paper-full.js"></script>
+    <script type='text/javascript' src='http://code.jquery.com/jquery-1.8.2.js'></script>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+    <script src="//code.jquery.com/jquery-1.10.2.js"></script>
+    <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+
+
+
+
+
+</head>
+<body onload="getNewImage()" background="/static/images/labelag-splash.jpeg" style="width:40%;background-position:center;">
+<div id="main>">
+
+    <div id="info" class=bgcolor="#c0c0c0">
+        <h2>Instructions</h2>
+        <p>
+            <ol>
+                <li>Choose category to label.</li>
+                <li>Click and drag to select region. Labels can be moved by clicking and dragging. Double click to delete an area.</li>
+            </ol>
+        </p>
+
+        <p>Label one apple per circle!</p>
+        <p>
+            <table id="imageExampleTable"><tr>
+                <td id="imageExample" bgcolor="blue">
+                    <div>
+                        <img src="/static/images/connectedLabels.png" alt="" width="134" height="93" />
+                    </div>
+                    Example Image
+                </td>
+                <td id="imageIncorrectExample" bgcolor="red">
+                    <div>
+                        <img src="/static/images/connectedLabelsIncorrect.png" alt="" width="134" height="93" />
+                    </div>
+                    Incorrect Label
+                </td>
+                <td id="imageCorrectExample" bgcolor="green">
+                    <div>
+                        <img src="/static/images/connectedLabelsCorrect.png" alt="" width="134" height="93" />
+                    </div>
+                    Correct Label
+                </td>
+
+
+            </tr></table>
+
+        </p>
+        <p>Start labeling <a target="_blank" href="label" style="color:hotpink">here</a></p>
+    </div>
+
+</div>
+</body>
+</html>
