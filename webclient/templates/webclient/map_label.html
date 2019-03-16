@@ -70,7 +70,7 @@
 </head>
 <body>
 
-Rock Traitsi: Decision Support System: <br/>
+Rock Traits Decision Support System: <br/>
 <div id="mapid" style="height: 800px; width: 1000px; float:left"></div>
 <div style="height: 512px; width: 100px;float: left" id="">
     <form style="margin:15px" id="class_select">
@@ -117,7 +117,11 @@ Rock Traitsi: Decision Support System: <br/>
     var map = L.map('mapid', {
         minZoom: 15,
         maxZoom: 23,
-        layers: [atlantaTiles]
+        layers: [atlantaTiles],
+        updateWhenZooming:false,
+        updateWhenIdle: true,
+        preferCanvas: true
+
     });
 
     map.setView([37.45242778, -118.44222222], 23);
@@ -147,9 +151,9 @@ Rock Traitsi: Decision Support System: <br/>
     var baseLayers = {};
 
     var overlays = {
-        "Raw imagery": atlantaTiles,
-        "Rock predictions": predictTiles,
-        "Human corrections": drawnItems
+        "Raster raw": atlantaTiles,
+        "Raster predictions": predictTiles,
+        "Vector annotations": drawnItems
     };
 
     L.control.layers(baseLayers, overlays,{collapsed:false}).addTo(map);
@@ -212,6 +216,7 @@ Rock Traitsi: Decision Support System: <br/>
     printer.addTo(map);
 
     draw_shapes = function (geoJson, label_type) {
+        alert(geoJson.size())
         geoJson.properties.options.weight = 0.5;
         if (label_type == "circle") {
            circleLayer = L.circle([geoJson.geometry.coordinates[1], geoJson.geometry.coordinates[0]], geoJson.properties.options);

@@ -664,7 +664,7 @@ def get_all_tiled_labels(request):
         response_dict["southwest_lat"] = tiled_label.southwest_Lat
         response_dict["southwest_lng"] = tiled_label.southwest_Lng
         response_dict["zoom_level"] = tiled_label.zoom_level
-        print(tiled_label.get_label_type_display())
+        #print(tiled_label.get_label_type_display())
         response_dict["label_type"] = tiled_label.get_label_type_display()
         response_dict["geoJSON"] = tiled_label.label_json
         response_dict["category"] = tiled_label.category.category_name
