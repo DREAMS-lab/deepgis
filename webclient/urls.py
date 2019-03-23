@@ -3,6 +3,14 @@ from webclient import views as views
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include, path
+from djgeojson.views import GeoJSONLayerView
+from .models import TiledLabel
+
+class MapLayer(GeoJSONLayerView):
+    # Options
+    precision = 4   # float
+    simplify = 0.5  # generalization
+
 
 
 urlpatterns = [
@@ -32,11 +40,14 @@ urlpatterns = [
     path('print_label_data', views.print_label_data),
     url(r'^get_overlayed_combined_image/(?P<image_label_id>[0-9]*)$', views.get_overlayed_combined_image),
     url(r'^get_overlayed_category_image/(?P<category_label_id>[0-9]*)$', views.get_overlayed_category_image),
+    url(r'^get_all_tiled_labels/', views.get_all_tiled_labels, name='get_all_tiled_labels'),
     path('addTiledLabel', views.add_tiled_label),
     path('TiledLables',views.get_all_tiled_labels),
+    path('WindowTiledLables', views.get_window_tiled_labels),
     path('addTiledImage', views.add_train_image_label),
     path('addTiledCategories', views.add_all_tiled_categories),
     path('deleteTileLabels', views.delete_tile_label),
     path('getTiledLabelCoordinates', views.get_tiled_label_coordinates),
     path('getCombinedLabelGeojson', views.get_combined_label_geojson),
-]+ static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    url(r'^data.geojson$', GeoJSONLayerView.as_view(model=TiledLabel), name='data'),
+    ]+ static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

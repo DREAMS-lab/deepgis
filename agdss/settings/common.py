@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'leaflet',
+    'djgeojson',
 ]
 
 MIDDLEWARE = [
@@ -132,7 +134,7 @@ LOGIN_REDIRECT_URL = '/webclient'
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 STATIC_URL = '/static/'
 STATIC_ROOT = "/app/static-root/"
-CATEGORY_TO_LABEL = 'tomato'
+CATEGORY_TO_LABEL = 'wildlife'
 LABEL_FOLDER_NAME = 'labels'
 STATICFILES_DIRS = (
 '/home/jdas/',

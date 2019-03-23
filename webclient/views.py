@@ -284,20 +284,26 @@ def getNewImage(request):
 
     images = Image.objects.all().annotate(count=Count('imagelabel')).filter(count__lt=labelsPerImage)
     user = request.user
+    print(user)
     if user.groups.filter(name='god').exists():
         ignore_max_count = True
     else:
         ignore_max_count = False
+        print(images)
+
         categories_to_label = [settings.CATEGORY_TO_LABEL]
         all_unfinished_images = images
         for cat in categories_to_label:
+            print(cat)
             images = all_unfinished_images.filter(categoryType__category_name=cat)
             if images:
                 break
+    print(images)
 
     images = images.order_by('count').reverse()
-    subimage = None
+    print(images)
 
+    subimage = None
     img = None
     for im in images:
         index = randint(0, len(images))
@@ -655,8 +661,6 @@ def add_tiled_label(request):
 def get_all_tiled_labels(request):
     response_obj = []
 
-    #TiledLabel.objects.all().delete()
-
     for tiled_label in TiledLabel.objects.all():
         response_dict = {}
         response_dict["northeast_lat"] = tiled_label.northeast_Lat
@@ -670,7 +674,32 @@ def get_all_tiled_labels(request):
         response_dict["category"] = tiled_label.category.category_name
         response_obj.append(response_dict)
 
-    #response = serializers.serialize("json", TiledLabel.objects.all())
+    return JsonResponse(response_obj,safe=False)
+
+def get_window_tiled_labels(request):
+    response_obj = []
+    float_tollerance = 1e-5
+    print(request)
+    request_json = json.load(request)
+    print(request_json)
+
+    tileLabels = TiledLabel.objects.filter(
+            northeast_Lat__range=(request_json["northeast_lat"] - float_tollerance, request_json["northeast_lat"] + float_tollerance),
+            northeast_Lng__range=(request_json["northeast_lng"] - float_tollerance, request_json["northeast_lat"] + float_tollerance),
+            southwest_Lat__range=(request_json["southwest_lat"] - float_tollerance, request_json["northeast_lat"] + float_tollerance),
+            southwest_Lng__range=(request_json["southwest_lng"] - float_tollerance, request_json["northeast_lat"] + float_tollerance))
+
+    for tiled_label in tileLabels:
+        response_dict = {}
+        response_dict["northeast_lat"] = tiled_label.northeast_Lat
+        response_dict["northeast_lng"] = tiled_label.northeast_Lng
+        response_dict["southwest_lat"] = tiled_label.southwest_Lat
+        response_dict["southwest_lng"] = tiled_label.southwest_Lng
+        response_dict["zoom_level"] = tiled_label.zoom_level
+        response_dict["label_type"] = tiled_label.get_label_type_display()
+        response_dict["geoJSON"] = tiled_label.label_json
+        response_dict["category"] = tiled_label.category.category_name
+        response_obj.append(response_dict)
     return JsonResponse(response_obj,safe=False)
 
 @csrf_exempt
