@@ -40,6 +40,5 @@ form_class=UserCreationForm,
         success_url= '/login'
     )),
 url(r'^accounts/', include('django.contrib.auth.urls')),
-
 url(r'^$', RedirectView.as_view(url='/webclient/map_label')),
 ]

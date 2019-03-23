@@ -3,13 +3,8 @@ from webclient import views as views
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include, path
-from djgeojson.views import GeoJSONLayerView
+# from djgeojson.views import GeoJSONLayerView
 from .models import TiledLabel
-
-class MapLayer(GeoJSONLayerView):
-    # Options
-    precision = 4   # float
-    simplify = 0.5  # generalization
 
 
 
@@ -49,5 +44,4 @@ urlpatterns = [
     path('deleteTileLabels', views.delete_tile_label),
     path('getTiledLabelCoordinates', views.get_tiled_label_coordinates),
     path('getCombinedLabelGeojson', views.get_combined_label_geojson),
-    url(r'^data.geojson$', GeoJSONLayerView.as_view(model=TiledLabel), name='data'),
     ]+ static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

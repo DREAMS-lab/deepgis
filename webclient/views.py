@@ -9,6 +9,7 @@ from datetime import datetime
 from urllib.request import urlopen
 from urllib.parse import urljoin
 
+from urllib.request import urlopen
 import re
 import sys
 import io
@@ -39,6 +40,10 @@ from webclient.image_ops.convert_images import convert_image_label_to_SVG
 import csv
 import base64
 import numpy as np
+from .models import *
+from webclient.image_ops.convert_images import convert_image_label_to_SVG, convert_category_label_to_SVG
+
+import csv
 
 
 ######
@@ -88,6 +93,7 @@ def map_label(request):
 
     }
     return HttpResponse(template.render(context, request))
+
 ##################
 #POST/GET REQUESTS
 ##################
@@ -105,6 +111,7 @@ def applyLabels(request):
         image_name = dict['image_name']
         path = dict['path']
         #category = dict['category']
+        #category_name = dict['category_name']
         image_filters = dict['image_filters']
         subimage = dict['subimage']
         timeTaken = dict['timeTaken']
@@ -168,6 +175,9 @@ def applyLabels(request):
 
 
         convert_image_label_to_SVG(labelObject)
+        convert_category_label_to_SVG(category_label)
+
+    convert_image_label_to_SVG(labelObject)
 
 
 
@@ -302,8 +312,18 @@ def getNewImage(request):
 
     images = images.order_by('count').reverse()
     print(images)
+    #
+    # subimage = None
+    # categories_to_label = [settings.CATEGORY_TO_LABEL]
+    # all_unfinished_images = images
+    # for cat in categories_to_label:
+    #     images = all_unfinished_images.filter(categoryType__category_name=cat)
+    #     if images:
+    #         break
+    #
+    # images = images.order_by('count').reverse()
+    # subimage = None
 
-    subimage = None
     img = None
     for im in images:
         index = randint(0, len(images))
@@ -326,6 +346,7 @@ def getNewImage(request):
             }
     if label_list:
         response['labels'] = label_list.labelShapes
+        response['labels'] = label_list.combined_labelShapes
     else:
         response['labels'] = ''
 
@@ -420,6 +441,7 @@ def addImage(request):
         print(cat.color)
         if not cat.color:
             cat.color = models.get_color()
+            cat.color = get_color()
             cat.save()
 
     imageList = Image.objects.all().filter(name=request.POST['image_name'], path=path, description=request.POST.get('description', default=''), source=sourceType)
@@ -529,7 +551,7 @@ def calculateEntropyMap(request):
 ############
 re_image_path = re.compile(r'/%s%s(.*)' %('webclient', settings.STATIC_URL))
 
-
+@csrf_exempt
 @require_GET
 def get_overlayed_combined_image(request, image_label_id):
     image_label = ImageLabel.objects.filter(id=image_label_id)
@@ -542,7 +564,7 @@ def get_overlayed_combined_image(request, image_label_id):
     except RuntimeError as e:
         print(e, file=sys.stderr)
         return HttpResponseServerError(str(e))
-    foreground = PILImage.open(io.BytesIO(blob))
+    foreground = foreground.convert('RGBA')
     #path = re.match(re_image_path, image.path).groups(1)[0]
     path = image.path
     #background = PILImage.open(path + image.name).convert('RGB')
@@ -556,6 +578,7 @@ def get_overlayed_combined_image(request, image_label_id):
     background.save(output, format='png')
     return HttpResponse(output.getvalue(), content_type="image/png")
 
+@csrf_exempt
 @require_GET
 def get_overlayed_category_image(request, category_label_id):
     category_label = CategoryLabel.objects.filter(id=category_label_id)
@@ -568,7 +591,7 @@ def get_overlayed_category_image(request, category_label_id):
     except RuntimeError as e:
         print(e, file=sys.stderr)
         return HttpResponseServerError(str(e))
-    foreground = PILImage.open(io.BytesIO(blob))
+    foreground = foreground.convert('RGBA')
     #path = re.match(re_image_path, image.path).groups(1)[0]
     path = image.path
     #background = PILImage.open(path + image.name).convert('RGB')
@@ -591,6 +614,7 @@ def fix_label_location(request):
         label.labelShapes = re.sub(re_transform_xy, subtractPadding, shape)
         label.save()
     return HttpResponse("Changed")
+
 def subtractPadding(matchobj):
     try:
         s = '%s%d,%d%s' % (matchobj.group('prefix'),

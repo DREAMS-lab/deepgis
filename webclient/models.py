@@ -164,7 +164,6 @@ class TiledLabel(models.Model):
         default="R"
     )
 
-
 class TileSet(models.Model):
     base_location = models.CharField(max_length=600)
 
