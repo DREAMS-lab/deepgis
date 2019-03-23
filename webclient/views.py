@@ -564,6 +564,7 @@ def get_overlayed_combined_image(request, image_label_id):
     except RuntimeError as e:
         print(e, file=sys.stderr)
         return HttpResponseServerError(str(e))
+    foreground = PILImage.open(io.BytesIO(blob))
     foreground = foreground.convert('RGBA')
     #path = re.match(re_image_path, image.path).groups(1)[0]
     path = image.path
@@ -591,6 +592,7 @@ def get_overlayed_category_image(request, category_label_id):
     except RuntimeError as e:
         print(e, file=sys.stderr)
         return HttpResponseServerError(str(e))
+    foreground = PILImage.open(io.BytesIO(blob))
     foreground = foreground.convert('RGBA')
     #path = re.match(re_image_path, image.path).groups(1)[0]
     path = image.path
