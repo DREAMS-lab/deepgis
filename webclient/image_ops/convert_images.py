@@ -11,6 +11,10 @@ import numpy
 import SVGRegex
 from webclient.image_ops import crop_images
 import numpy as np
+import skimage 
+from io import BytesIO
+import imageio
+
 
 IMAGE_FILE_EXTENSION = '.png'
 
@@ -187,7 +191,7 @@ def image_label_string_to_SVG_string(DBStr, height=None, width=None, keepImage=F
 
 
 def image_labels_to_countable_npy():
-    labels = ImageLabel.objects.all()
+    labels = ImageLabel.objects.filter(labeler__username='sarah')
     foldername = 'annotations_npy'
 
     for label in labels:
@@ -197,16 +201,34 @@ def image_labels_to_countable_npy():
         print(svg)
         image, height, width = SVGDimensions(svg)
         print(width)
-        masks_ndarray = np.zeros((len(paths), width, height))
-        for idx, path in enumerate(paths):
-            img = WandImage(blob=image_string_to_SVG_string_file(image_label_string_to_SVG_string(path, height, width)))
-            img.resize(width, height)
-            masks_ndarray[idx, :, :] = numpy.array(img.convert('png'))
-            print(label.parentImage)
-        filename = 'P%iL%iI%s' % (label.parentImage.id, label.id, label.parentImage.name)
-        outputFilename = (
-                settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + IMAGE_FILE_EXTENSION)
-        np.save(outputFilename)
+        masks_ndarray = np.zeros((len(paths), height, width))
+        print(masks_ndarray.shape)
+        for idx,path in enumerate(paths):
+            img=WandImage(blob=image_string_to_SVG_string_file(image_label_string_to_SVG_string(path, height, width)))
+            img.resize(width,height)
+            # masks_ndarray[idx, :, :] = numpy.array(img.convert('png'))
+            # print(label.parentImage)
+            img.background_color = WandColor('white')
+            img.alpha_channel = 'remove'
+            # Convert to black and white
+            img.negate()
+            img.threshold(0)
+            img.format = 'png'
+            filename='%s' % (label.parentImage.name)
+            if not os.path.exists(settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername):
+                os.makedirs(settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername)
+            outputFilename = (
+                        settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + IMAGE_FILE_EXTENSION)
+            #np.save(outputFilename)
+            img.save(filename=outputFilename)
+            im = imageio.imread(outputFilename)
+            masks_ndarray[idx, :, :] = im
+            print(im.shape)
+        print(masks_ndarray.shape)
+        outputFilenameNpy = (
+                settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + '.npy')
+
+        np.save(outputFilenameNpy,masks_ndarray)
 
         print(("converted Image " + outputFilename))
 
