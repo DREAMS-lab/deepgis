@@ -1,7 +1,7 @@
 from wand.image import Image as WandImage
 from wand.color import Color as WandColor
 import io
-from webclient.models import Image, ImageLabel, CategoryLabel
+from webclient.models import User, Labeler, Image, ImageLabel, CategoryLabel
 from django.conf import settings
 import re
 import wand.exceptions
@@ -11,8 +11,6 @@ import numpy
 import SVGRegex
 from webclient.image_ops import crop_images
 import numpy as np
-import skimage 
-from io import BytesIO
 import imageio
 
 
@@ -191,19 +189,22 @@ def image_label_string_to_SVG_string(DBStr, height=None, width=None, keepImage=F
 
 
 def image_labels_to_countable_npy():
-    labels = ImageLabel.objects.filter(labeler__username='sarah')
-    foldername = 'annotations_npy'
+    _user = User.objects.filter(username='god')[0]
+    _labeler = Labeler.objects.filter(user=_user)[0]
+    labels = ImageLabel.objects.filter(labeler=_labeler)
+    foldername = 'npy'
 
     for label in labels:
         print(label)
+        filename = '%s' % (label.parentImage.name)
+        print(filename)
         svg = label.combined_labelShapes
         paths = re.findall(SVGRegex.rePath, svg)
-        print(svg)
         image, height, width = SVGDimensions(svg)
-        print(width)
         masks_ndarray = np.zeros((len(paths), height, width))
-        print(masks_ndarray.shape)
+        print(masks_ndarray.shape, len(paths))
         for idx,path in enumerate(paths):
+            print(path[0])
             img=WandImage(blob=image_string_to_SVG_string_file(image_label_string_to_SVG_string(path, height, width)))
             img.resize(width,height)
             # masks_ndarray[idx, :, :] = numpy.array(img.convert('png'))
@@ -214,23 +215,19 @@ def image_labels_to_countable_npy():
             img.negate()
             img.threshold(0)
             img.format = 'png'
-            filename='%s' % (label.parentImage.name)
             if not os.path.exists(settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername):
                 os.makedirs(settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername)
             outputFilename = (
-                        settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + IMAGE_FILE_EXTENSION)
-            #np.save(outputFilename)
+                        settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + '_' + str(idx) + IMAGE_FILE_EXTENSION)
             img.save(filename=outputFilename)
             im = imageio.imread(outputFilename)
-            masks_ndarray[idx, :, :] = im
-            print(im.shape)
-        print(masks_ndarray.shape)
+            print(idx, path)
+            masks_ndarray[idx, :, :] = np.array(im)
         outputFilenameNpy = (
                 settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + '.npy')
-
+        print(outputFilenameNpy)
         np.save(outputFilenameNpy,masks_ndarray)
 
-        print(("converted Image " + outputFilename))
 
 
 def category_label_string_to_SVG_string(category_label, keepImage=False):
