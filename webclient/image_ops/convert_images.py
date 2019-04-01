@@ -196,13 +196,15 @@ def image_labels_to_countable_npy():
 
     for label in labels:
         parent_image = label.parentImage
-        filename = '%s' % parent_image.name.replace('.JPG', '')
+        filename = '%s' % parent_image.name.replace('.JPG','')
+        outputFilenameNpy = (settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + '.npy')
         categorylabels = label.categorylabel_set.all()
         height = parent_image.height
         width = parent_image.width
         total_paths = 254
         masks_ndarray = np.zeros((total_paths, height, width))
         ctr = 0
+        
         for cat_id, categorylabel in enumerate(categorylabels):
             svg = categorylabel.labelShapes
             paths = []
@@ -223,21 +225,20 @@ def image_labels_to_countable_npy():
                     if not os.path.exists(settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername):
                         os.makedirs(settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername)
                     outputFilename = (
-                            settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + '_' + str(idx) + IMAGE_FILE_EXTENSION)
+                            settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + '_' + str(idx) + '_' + str(ctr) + IMAGE_FILE_EXTENSION)
                     img.save(filename=outputFilename)
                     im = imageio.imread(outputFilename)
                     masks = np.array(im)
-                    cat_id = categorylabel.categoryType_id
-                    cat_mask = np.where(masks == 255,cat_id , masks)
+                    category_id = categorylabel.categoryType_id
+                    cat_mask = np.where(masks == 255,category_id , masks)
                     masks_ndarray[ctr, :, :] = cat_mask
                     ctr = ctr + 1
-                outputFilenameNpy = (
-                    settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + '.npy')
             else:
                 print(ctr, cat_id, 0, 'EMPTY')
         masks_ndarray.resize(ctr, height, width)
         print(masks_ndarray.shape)
         np.save(outputFilenameNpy,masks_ndarray)
+
 
 
 
