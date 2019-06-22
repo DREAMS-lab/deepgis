@@ -3,6 +3,8 @@ version: '2'
 services:
   db:
     build: dockerfiles/postgres/
+    volumes:
+      - persistent-storage:/var/lib/postgresql/data
   web:
     build: dockerfiles/django/
     ports:
@@ -22,3 +24,5 @@ networks:
       config:
         - subnet: 172.32.0.0/16
           gateway: 172.32.0.1
+volumes:
+  persistent-storage:

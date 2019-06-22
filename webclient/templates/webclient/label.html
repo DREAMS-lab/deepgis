@@ -4,7 +4,7 @@
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-		<title>AgDSS Web</title>
+		<title>DeepGIS Web</title>
 		<!--<link rel="stylesheet" href="/static/scripts/paperjs/examples/css/style.css"> -->
 
 		<link rel="stylesheet" href="/static/css/style.css">
@@ -235,6 +235,17 @@ labelsDrawn -= 1;
 	    }
 	}
 
+	function onDelete(){
+		currentSegment = path.removeSegment(path._segments.length -1);
+		paper.view.update();
+    }
+	$("#undo").click(onDelete);
+	$(document).keydown( function(e) {
+		if( e.which === 90 && (event.ctrlKey || event.metaKey)){
+			onDelete();
+		}
+	});
+
 	function onMouseDrag(event) {
 
 	    if (mode == 'move' && type == 'point') {
@@ -358,10 +369,10 @@ function displayImage(image_name, image_path, categories, shapes, colors, point,
 	var output = [];
 	$('#categories_coll')[0].html = '';
 	$.each(categories, function(i, val) {
-		cat_list_item = '<li><input type="radio" name="category_select" value="' + val + '">' +
-			' <label for="' + val + '"><table style="width:100%"><tr><td><p>'+ val +
-			'</p></td><td><p><span class="circle" style="color:' + colors[i] + '; background-color:' + colors[i] +
-			';"></span></p></td></tr></table></label></li>';
+		cat_list_item = '<li style="display: inline-block; padding-left: 42px; width: 100%;"><input type="radio" style="float: left;margin-top: 11px;display: block;" name="category_select" value="' + val + '">' +
+                        ' <label style="float: left;" for="' + val + '"><table style="width:100%"><tr><td><p>'+ val +
+						'</p></td><td><p><span class="circle" style="color:' + colors[i] + '; background-color:' + colors[i] +
+						';"></span></p></td></tr></table></label></li>';
 
 		output.push(cat_list_item);
 	});
@@ -423,7 +434,7 @@ $('document').ready(function() {
 				<ul class="sidebar-nav">
 					<li class="sidebar-brand">
 						<a href="#" style="font-size: 150%; text-align: center;">
-							𝓁𝒶𝒷𝑒𝓁.𝒶𝑔
+							deepgis.org
 						</a>
 					</li>
 
@@ -436,7 +447,7 @@ $('document').ready(function() {
 					</form>
 
 					<li data-toggle="collapse" data-target="#image_ops" class="collapsed active">
-						<p><i class="fa fa-picture-o" aria-hidden="true"></i> Image Operations <span class="arrow"></span></p>
+						<p><i class="fa fa-picture-o" aria-hidden="true"></i> Image  Filter<span class="arrow"></span></p>
 					</li>
 					<ul class="sidebar-nav2 sub-menu collapse" id="image_ops">
 						<!-- <li class="active"><a href="#">CSS3 Animation</a></li> -->
@@ -465,6 +476,10 @@ $('document').ready(function() {
 					<li>
 						<p><label><input type="checkbox" id="noLabels" /> No labels in image</label></p>
 					</li>
+					<li>
+						<p><input id="undo" type="button" value="Undo" class="btn btn-success" style="display: inline-block; background-color: orangered;" ></p>
+					</li>
+
 				</ul>
 
 				<form method="post" name="applyLabelsForm">
@@ -498,7 +513,7 @@ $('document').ready(function() {
 		     <div id="tips">
 			     <p> <h3>Instructions</h3>
 			     <ul class="list-group">
-				     <li class="list-group-item">Click and draw bezier curve to select region.</li>
+				     <li class="list-group-item">Click and draw polygons or Bezier curves to select regions. <br/>Clicking the starting point closes curve. <br/> Undo button or Ctrl+z/Cmd+z removes previously added point.<br/>Double clicking on closed region deletes it.</li>
 			     </ul>
 			     </p>
 		     </div>
@@ -518,7 +533,7 @@ $('document').ready(function() {
 					     </div>
 
 					     <div>
-						     <p>To report a bug, go to the github page <a href="https://github.com/dcunhas/agdss/issues" target="_blank">here</a> and open a new issue</p>
+						     <p>To report a bug, go to the github page <a href="https://github.com/dreams-lab/deepgis/issues" target="_blank">here</a> and open a new issue</p>
 
 					     </div>
 
