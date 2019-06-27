@@ -339,7 +339,7 @@ def getNewImage(request):
     response = {
         'path': img.path,
         'image_name': img.name,
-        'categories': [c.category_name for c in img.categoryType.all()],
+        'categories': [c.category_name for c in CategoryType.objects.all()],
         'shapes': [c.get_label_type_display() for c in img.categoryType.all()],
         'colors': [str(c.color) for c in img.categoryType.all()],
         'subimage': subimage,
@@ -525,6 +525,7 @@ def numImageLabels(request):
     images = Image.objects.all().annotate(num=Count('imagelabel')).order_by('-num')
     #print(images)
     return HttpResponse("Images: " + ','.join(map(str, images)) )
+
 @csrf_exempt
 @require_POST
 def combineAllImages(request):
@@ -769,7 +770,7 @@ def add_all_tiled_categories(request):
     for cat_name in ["amp", "tap", "car", "house", "tree", "road"]:
         category = CategoryType()
         category.category_name = cat_name
-        category.color = models.get_color()
+        category.color = get_color()
         category.label_type = "A"
         category.save()
 
@@ -858,3 +859,20 @@ def get_combined_label_geojson(request):
     combined_dict['features'] = [label.label_json for label in TiledLabel.objects.all()]
     print(combined_dict)
     return JsonResponse(combined_dict)
+
+@csrf_exempt
+@require_POST
+def add_new_category(request):
+    data = request.POST.get("data")
+    color = get_color()
+    if data != "":
+        if CategoryType.objects.all().filter(category_name=data).count() == 0:
+            category = CategoryType()
+            category.category_name = data
+            category.color = color
+            category.label_type = "A"
+            category.save()
+        else:
+            return JsonResponse({"result": "failure", "reason": data + " already exists."}, safe=False)
+
+    return JsonResponse({ "result": "success", "data": data, "color": str(color) }, safe=False)

@@ -19,7 +19,7 @@
 		<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
 
 		<script type="text/paperscript" canvas="canvas">
-var startPoint;
+	var startPoint;
 	var raster;
 	var labelsLayer = new paper.Layer();
 	var isActive = false;
@@ -444,6 +444,12 @@ $('document').ready(function() {
 					<form action="" id="categories">
 						<ul class="sidebar-nav2 sub-menu collapse show" id="categories_coll">
 						</ul>
+						<ul class="sidebar-nav2 sub-menu collapse show" id="add_category">
+							<li style="display: inline-block; padding-left: 42px; margin-bottom: 16px; width: 100%;">
+								<input class="form-control form-control-sm " style="width: 80%; margin-bottom: 10px;" id="add_new_category" placeholder="Add a new category">
+								<button type="button" id="category_submit" style="margin-left: 30px;" class="btn btn-primary btn-sm">Submit</button>
+							</li>
+						</ul>
 					</form>
 
 					<li data-toggle="collapse" data-target="#image_ops" class="collapsed active">
@@ -477,15 +483,15 @@ $('document').ready(function() {
 						<p><label><input type="checkbox" id="noLabels" /> No labels in image</label></p>
 					</li>
 					<li>
-						<p><input id="undo" type="button" value="Undo" class="btn btn-success" style="display: inline-block; background-color: orangered;" ></p>
+						<p><input id="undo" type="button" value="Undo" class="btn btn-success btn-sm" style="margin: 0 auto; display: grid; margin-bottom: 10px; background-color: orangered;" ></p>
 					</li>
-
+					<li>
+						<form method="post" name="applyLabelsForm">
+							{% csrf_token %}
+							<input id="applyLabels" type="button" value="Submit labels" style="margin: 0 auto; display: grid;" class="btn btn-success btn-sm">
+						</form>
+					</li>
 				</ul>
-
-				<form method="post" name="applyLabelsForm">
-					{% csrf_token %}
-					<input id="applyLabels" type="button" value="Submit labels" class="btn btn-success" style="position: absolute; bottom: 5%; left: 25%; ">
-				</form>
 			</div>
 			<!-- /#sidebar-wrapper -->
 
@@ -553,10 +559,28 @@ $('document').ready(function() {
 
 		<!-- Menu Toggle Script -->
 		<script>
-$("#menu-toggle").click(function(e) {
-	e.preventDefault();
-	$("#wrapper").toggleClass("toggled");
-});
+			$("#menu-toggle").click(function(e) {
+				e.preventDefault();
+				$("#wrapper").toggleClass("toggled");
+			});
+			$("#category_submit").click(function() {
+				$("#category_submit").attr("disabled", true);
+				if ($("#add_new_category").val()) {
+					$.post( "/webclient/addCategory", { data: $("#add_new_category").val()}).done(function(data) {
+						if (data.result == "failure") { alert(data.reason);};
+						if (data.result == "success") {
+							cat_list_item = '<li style="display: inline-block; padding-left: 42px; width: 100%;"><input type="radio" style="float: left;margin-top: 11px;display: block;" name="category_select" value="' + data.data + '">' +
+											' <label style="float: left;" for="' + data.data + '"><table style="width:100%"><tr><td><p>'+ data.data +
+											'</p></td><td><p><span class="circle" style="color:' + data.color + '; background-color:' + data.color +
+											';"></span></p></td></tr></table></label></li>';
+							$('#categories_coll').append($(cat_list_item));
+						};
+					});
+				} else {
+				    alert("Missing category name.");
+				}
+				$("#category_submit").attr("disabled", false);
+			});
 		</script>
 
 	</body>

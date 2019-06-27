@@ -42,6 +42,7 @@ urlpatterns = [
     path('addTiledImage', views.add_train_image_label),
     path('addTiledCategories', views.add_all_tiled_categories),
     path('deleteTileLabels', views.delete_tile_label),
+    path('addCategory', views.add_new_category),
     path('getTiledLabelCoordinates', views.get_tiled_label_coordinates),
     path('getCombinedLabelGeojson', views.get_combined_label_geojson),
     ]+ static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
