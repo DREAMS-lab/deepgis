@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+derived from https://github.com/Trefo/agdss
 
 =======
 # AgDSS
