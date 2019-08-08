@@ -4,4 +4,4 @@ psycopg2
 pillow
 numpy
 wand
-	
+imageio	

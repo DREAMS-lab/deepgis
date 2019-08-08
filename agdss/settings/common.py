@@ -135,6 +135,6 @@ STATIC_ROOT = "/app/static-root/"
 CATEGORY_TO_LABEL = 'wildlife'
 LABEL_FOLDER_NAME = 'labels/'
 STATICFILES_DIRS = (
-'/home/jdas/',
+'/app/webclient/static/',
 )
 

@@ -23,8 +23,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django.views.generic import RedirectView
 from django.contrib import admin
 from adminplus.sites import AdminSitePlus
-
-
+from django.conf import settings
+from django.conf.urls.static import static
 #Set up admin site and import all admin.py files
 admin.site = AdminSitePlus()
 admin.sites.site = admin.site
@@ -41,4 +41,4 @@ form_class=UserCreationForm,
     )),
 url(r'^accounts/', include('django.contrib.auth.urls')),
 url(r'^$', RedirectView.as_view(url='/webclient/map_label')),
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
