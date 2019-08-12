@@ -46,6 +46,8 @@ The webapp is be serving at [localhost:8000](http://localhost:8000).
 The admin page is available at [localhost:8000/admin](http://localhost:8000/admin)
 
 ## Visuals
+Wildlife annotations in DeepGIS
+![image](https://drive.google.com/uc?export=view&id=10L7wWwjIrwtJS6AbsVnoDOOl-OVVD030)
 
 
 ## Contributing
