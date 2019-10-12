@@ -13,6 +13,7 @@ services:
       - db
     volumes:
       - ./:/app
+      - /home/jdas:/home/jdas
     working_dir: /app
     command: bash -c "python3 manage.py makemigrations webclient && python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
 
