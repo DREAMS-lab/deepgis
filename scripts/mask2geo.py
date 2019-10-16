@@ -117,8 +117,8 @@ for i in range(0,len(p)):
         label_type = "P"
         tl = TiledLabel(label_json=geojson.loads(label_json), label_type=label_type, northeast_Lat=northeast_Lat,northeast_Lng=northeast_Lng,southwest_Lat=southwest_Lat,southwest_Lng=southwest_Lng,zoom_level=zoom_level,category=category)
         tl.save()
-    except:
-            print('skipping: ', i)
+    except Exception as e:
+        print(e)
 
 
 
