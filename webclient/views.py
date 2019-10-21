@@ -661,7 +661,7 @@ def print_label_data(request):
 @csrf_exempt
 @require_POST
 def add_tiled_label(request):
-    print(request['POST'])
+    # print(request['POST'])
     request_json = json.load(request)
     
     tiled_label = TiledLabel()
@@ -688,7 +688,8 @@ def add_tiled_label(request):
 def get_all_tiled_labels(request):
     response_obj = []
 
-    for tiled_label in TiledLabel.objects.all():
+    # for tiled_label in TiledLabel.objects.all():
+    for tiled_label in TiledLabel.objects.order_by('-id')[:1000]:
         response_dict = {}
         response_dict["northeast_lat"] = tiled_label.northeast_Lat
         response_dict["northeast_lng"] = tiled_label.northeast_Lng

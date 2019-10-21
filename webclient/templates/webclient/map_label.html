@@ -3,6 +3,8 @@
 <html>
 <head>
     <title>DeepGIS -- Rocks </title>
+    <script type="text/javascript" src="/static/scripts/dom-to-image.min.js"></script>
+
     <script src="/static/scripts/leaflet/leaflet.js">
 
     <script type="text/javascript" src="/static/scripts/dom-to-image.min.js"></script>
@@ -87,8 +89,11 @@ Rock Traits Decision Support System: <br/>
     var geoData;
 
     $.getJSON("{% url 'get_all_tiled_labels' %}", function (data) {
-    alert(data);
+        // alert(data);
     geoData = data;
+        for (i = 0; i < geoData.length; i++) {
+            draw_shapes(geoData[i].geoJSON, geoData[0].geoJSON.type)
+        }
     });
 
 
@@ -419,3 +424,4 @@ Rock Traits Decision Support System: <br/>
   -->
 </body>
 </html>
+

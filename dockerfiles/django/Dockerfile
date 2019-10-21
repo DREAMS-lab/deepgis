@@ -18,7 +18,10 @@ ADD requirements.txt /code/
 RUN pip3 install -r requirements.txt
 RUN apt-get update
 RUN apt-get install -y dnsutils vim
-RUN apt-get install -y libgdal-dev gdal-bin python-gdal python3-gdal libmagickwand-dev imagemagick inkscape postgresql-client-common postgresql-client
+RUN apt-get install -y libgdal-dev gdal-bin python3-gdal libmagickwand-dev imagemagick inkscape postgresql-client-common postgresql-client
+RUN pip install --upgrade pip
+RUN pip3 install --upgrade pip
+
 RUN pip3 install django-adminplus
 RUN pip3 install django-extensions
 RUN pip3 install requests
@@ -28,4 +31,5 @@ RUN pip3 install ipython
 RUN pip3 install scipy
 RUN pip3 install shapely
 RUN pip3 install geojson
+
 ENV DJANGO_SETTINGS_MODULE agdss.settings.common
