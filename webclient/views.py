@@ -663,16 +663,21 @@ def print_label_data(request):
 def add_tiled_label(request):
     # print(request['POST'])
     request_json = json.load(request)
-    
-    tiled_label = TiledLabel()
+
+    tiled_label = TiledGISLabel()
     tiled_label.northeast_Lat = request_json["northeast_lat"]
     tiled_label.northeast_Lng = request_json["northeast_lng"]
     tiled_label.southwest_Lat = request_json["southwest_lat"]
     tiled_label.southwest_Lng = request_json["southwest_lng"]
     tiled_label.zoom_level = request_json["zoom_level"]
     tiled_label.category = CategoryType.objects.get(category_name=request_json["category_name"])
-    tiled_label.label_type = [K for (K, v) in TiledLabel.label_type_enum if request_json["label_type"].lower() == v.lower()][0]
-    tiled_label.label_json = request_json["geoJSON"]
+    tiled_label.label_type = \
+    [K for (K, v) in TiledGISLabel.label_type_enum if request_json["label_type"].lower() == v.lower()][0]
+    json_ = request_json["geoJSON"]
+    tiled_label.label_json = json_
+    print(json_["geometry"])
+    print(type(json_["geometry"]))
+    tiled_label.geometry = GEOSGeometry(str(json_["geometry"]))
     tiled_label.save()
 
 
@@ -689,7 +694,7 @@ def get_all_tiled_labels(request):
     response_obj = []
 
     # for tiled_label in TiledLabel.objects.all():
-    for tiled_label in TiledLabel.objects.order_by('-id')[:1000]:
+    for tiled_label in TiledGISLabel.objects.order_by('-id')[:1000]:
         response_dict = {}
         response_dict["northeast_lat"] = tiled_label.northeast_Lat
         response_dict["northeast_lng"] = tiled_label.northeast_Lng

@@ -7,6 +7,8 @@ from django.db import models
 from django.core.validators import MaxValueValidator
 import random
 from django.contrib.postgres.fields import JSONField, ArrayField
+from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.db import models
 
 class Color(models.Model):
     red = models.PositiveSmallIntegerField(default=0, validators=[MaxValueValidator(255)])
@@ -172,3 +174,26 @@ class Tile(models.Model):
     latitude = models.FloatField()
     longitude = models.FloatField()
     tile_set = models.ForeignKey(TileSet, on_delete=models.CASCADE)
+
+
+class TiledGISLabel(models.Model):
+    northeast_Lat = models.DecimalField(max_digits=17, decimal_places=14)
+    northeast_Lng = models.DecimalField(max_digits=17, decimal_places=14)
+    southwest_Lat = models.DecimalField(max_digits=17, decimal_places=14)
+    southwest_Lng = models.DecimalField(max_digits=17, decimal_places=14)
+    zoom_level = models.PositiveSmallIntegerField(default=23)
+    category = models.ForeignKey(CategoryType, on_delete=models.CASCADE, max_length=100, null=True, blank=True)
+    label_json = JSONField()
+
+    label_type_enum = (
+        ("R", "Rectangle"),
+        ("C", "Circle"),
+        ("P", "Polygon"),
+        ("A", "Any")
+    )
+    label_type = models.CharField(
+        max_length=1,
+        choices=label_type_enum,
+        default="R"
+    )
+    geometry = models.GeometryField()
