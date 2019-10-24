@@ -41,6 +41,7 @@ import csv
 import base64
 import numpy as np
 from .models import *
+from django.contrib.gis.geos import Polygon
 from webclient.image_ops.convert_images import convert_image_label_to_SVG, convert_category_label_to_SVG
 
 import csv
@@ -689,12 +690,18 @@ def add_tiled_label(request):
     return JsonResponse(resp_obj)
 
 @csrf_exempt
-@require_GET
 def get_all_tiled_labels(request):
+    xmin = float(request.GET.get("southwest_lng"))
+    ymin = float(request.GET.get("southwest_lat"))
+    xmax = float(request.GET.get("northeast_lng"))
+    ymax = float(request.GET.get("northeast_lat"))
+    bbox = (xmin, ymin, xmax, ymax)
+    geom = Polygon.from_bbox(bbox)
+
     response_obj = []
 
-    # for tiled_label in TiledLabel.objects.all():
-    for tiled_label in TiledGISLabel.objects.order_by('-id')[:1000]:
+    # for tiled_label in TiledLabel.objects.order_by('-id')[:1000]:
+    for tiled_label in TiledGISLabel.objects.filter(geometry__within=geom):
         response_dict = {}
         response_dict["northeast_lat"] = tiled_label.northeast_Lat
         response_dict["northeast_lng"] = tiled_label.northeast_Lng
@@ -716,23 +723,9 @@ def get_window_tiled_labels(request):
     request_json = json.load(request)
     print(request_json)
 
-    tileLabels = TiledLabel.objects.filter(
-            northeast_Lat__range=(request_json["northeast_lat"] - float_tollerance, request_json["northeast_lat"] + float_tollerance),
-            northeast_Lng__range=(request_json["northeast_lng"] - float_tollerance, request_json["northeast_lat"] + float_tollerance),
-            southwest_Lat__range=(request_json["southwest_lat"] - float_tollerance, request_json["northeast_lat"] + float_tollerance),
-            southwest_Lng__range=(request_json["southwest_lng"] - float_tollerance, request_json["northeast_lat"] + float_tollerance))
+    tileLabels = TiledGISLabel.objects.filter(poly__within=bbox)
 
-    for tiled_label in tileLabels:
-        response_dict = {}
-        response_dict["northeast_lat"] = tiled_label.northeast_Lat
-        response_dict["northeast_lng"] = tiled_label.northeast_Lng
-        response_dict["southwest_lat"] = tiled_label.southwest_Lat
-        response_dict["southwest_lng"] = tiled_label.southwest_Lng
-        response_dict["zoom_level"] = tiled_label.zoom_level
-        response_dict["label_type"] = tiled_label.get_label_type_display()
-        response_dict["geoJSON"] = tiled_label.label_json
-        response_dict["category"] = tiled_label.category.category_name
-        response_obj.append(response_dict)
+
     return JsonResponse(response_obj,safe=False)
 
 @csrf_exempt

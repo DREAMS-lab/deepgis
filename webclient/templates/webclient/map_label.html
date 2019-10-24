@@ -88,13 +88,23 @@ Rock Traits Decision Support System: <br/>
     map.setView([37.45242778, -118.44222222], 23);
     var geoData;
 
-    $.getJSON("{% url 'get_all_tiled_labels' %}", function (data) {
-        // alert(data);
-    geoData = data;
-        for (i = 0; i < geoData.length; i++) {
-            draw_shapes(geoData[i].geoJSON, geoData[0].geoJSON.type)
+    $.getJSON({
+        url: "get_all_tiled_labels/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
+            map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
+            "&southwest_lng=" + map.getBounds()._southWest.lng.toString(),
+        type: "GET",
+
+        success: function (data) {
+            geoData = data;
+            for (i = 0; i < geoData.length; i++) {
+                draw_shapes(geoData[i].geoJSON, geoData[0].geoJSON.type)
+            }
         }
+
+
     });
+
+
 
 
 
@@ -331,6 +341,26 @@ Rock Traits Decision Support System: <br/>
         xhttp.open("POST", "/webclient/addTiledLabel", true);
         xhttp.setRequestHeader("Content-Type", "application/json");
         xhttp.send(JSON.stringify(requestObj));
+    });
+
+    map.on('moveend', function (e) {
+        $.getJSON({
+            url: "get_all_tiled_labels/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
+                map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
+                "&southwest_lng=" + map.getBounds()._southWest.lng.toString(),
+            type: "GET",
+
+            success: function (data) {
+                geoData = data;
+                // drawnItems.removeLayer(geoJsonLayer);
+                for (i = 0; i < geoData.length; i++) {
+                    draw_shapes(geoData[i].geoJSON, geoData[0].geoJSON.type)
+                }
+            }
+
+
+        });
+
     });
 
     map.on('draw:deleted', function (e) {
