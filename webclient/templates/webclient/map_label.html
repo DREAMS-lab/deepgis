@@ -7,31 +7,34 @@
 
     <script src="/static/scripts/leaflet/leaflet.js">
 
-    <script type="text/javascript" src="/static/scripts/dom-to-image.min.js"></script>
+        <
+        script
+        type = "text/javascript"
+        src = "/static/scripts/dom-to-image.min.js" ></script>
     <link rel="stylesheet" href="/static/scripts/leaflet.draw/leaflet.draw.css"/>
     <script src="/static/scripts/leaflet.draw/leaflet.draw.js"></script>
     <script src="/static/scripts/jQuery/jquery-3.0.0.min.js"></script>
     <script src="/static/scripts/index.js"></script>
     <script src="/static/scripts/jQuery/jquery-3.0.0.min.js"></script>
-        <link rel="stylesheet" href="/static/scripts/leaflet/leaflet.css"/>
+    <link rel="stylesheet" href="/static/scripts/leaflet/leaflet.css"/>
 
     <!-- Make sure you put this AFTER Leaflet's CSS -->
     </script>
 
     <script type="text/javascript">
 
-    function project(lat, lng, zoom) {
-        var d = Math.PI / 180,
-            max = 1 - 1E-15,
-            sin = Math.max(Math.min(Math.sin(lat * d), max), -max),
-            scale = 256 * Math.pow(2, zoom);
+        function project(lat, lng, zoom) {
+            var d = Math.PI / 180,
+                max = 1 - 1E-15,
+                sin = Math.max(Math.min(Math.sin(lat * d), max), -max),
+                scale = 256 * Math.pow(2, zoom);
 
-        var point = {
-            x: R * lng * d,
-            y: R * Math.log((1 + sin) / (1 - sin)) / 2
-        };
-        return point;
-    }
+            var point = {
+                x: R * lng * d,
+                y: R * Math.log((1 + sin) / (1 - sin)) / 2
+            };
+            return point;
+        }
 
     function tiled(num) {
         return Math.floor(num / 256);
@@ -47,10 +50,10 @@ Rock Traits Decision Support System: <br/>
 <div style="height: 512px; width: 100px;float: left" id="">
     <form style="margin:15px" id="class_select">
         {% for category_name, color in categories.items %}
-            <label style="color:{{ color }}">
-                <input type="radio" name="label_class" value="{{ category_name }}">
-                {{ category_name }}
-            </label><br/>
+        <label style="color:{{ color }}">
+            <input type="radio" name="label_class" value="{{ category_name }}">
+            {{ category_name }}
+        </label><br/>
         {% endfor %}
         <br/>
         <br/>
@@ -65,14 +68,14 @@ Rock Traits Decision Support System: <br/>
         attribution: 'ASU, Ramon Arrowsmith',
         maxZoom: 23,
         id: 'mapbox.streets',
-	tms: true
+        tms: true
     });
 
     var predictTiles = L.tileLayer('/static/rock-tiles/prediction/{z}/{x}/{y}.png', {
         minZoom: 15,
         maxZoom: 23,
         id: 'mapbox.streets2',
-	tms: true
+        tms: true
     });
 
     var map = L.map('mapid', {
@@ -221,7 +224,7 @@ Rock Traits Decision Support System: <br/>
     draw_shapes = function (geoJson, label_type) {
         geoJson.properties.options.weight = 0.5;
         if (label_type == "circle") {
-           circleLayer = L.circle([geoJson.geometry.coordinates[1], geoJson.geometry.coordinates[0]], geoJson.properties.options);
+            circleLayer = L.circle([geoJson.geometry.coordinates[1], geoJson.geometry.coordinates[0]], geoJson.properties.options);
             drawnItems.addLayer(circleLayer);
         } else if (label_type.toLowerCase() == "rectangle") {
             var rectLayer = L.rectangle([[geoJson.geometry.coordinates[0][0].slice().reverse(), geoJson.geometry.coordinates[0][1].slice().reverse(),
@@ -237,6 +240,7 @@ Rock Traits Decision Support System: <br/>
             }
 
             var polyLayer = L.polygon(coords, geoJson.properties.options);
+
             drawnItems.addLayer(polyLayer);
         } else {
             var geoJsonLayer = L.geoJSON(geoJson, geoJson.properties.options);
@@ -252,7 +256,7 @@ Rock Traits Decision Support System: <br/>
     })
 
     function popUp(feature, layer) {
-    layer.bindPopup(feature.properties.name);
+        layer.bindPopup(feature.properties.name);
     }
 
     map.on(L.Draw.Event.CREATED, function (event) {
@@ -353,8 +357,11 @@ Rock Traits Decision Support System: <br/>
             success: function (data) {
                 geoData = data;
                 // drawnItems.removeLayer(geoJsonLayer);
+                for (j = 0; j < drawnItems.getLayers().length; j++) {
+
+                }
                 for (i = 0; i < geoData.length; i++) {
-                    draw_shapes(geoData[i].geoJSON, geoData[0].geoJSON.type)
+                    draw_shapes(geoData[i].geoJSON, geoData[i].geoJSON.type)
                 }
             }
 
@@ -371,7 +378,7 @@ Rock Traits Decision Support System: <br/>
                 var label_type = "Rectangle";
             }
             else if (layer instanceof L.Circle) {
-            //Workaround from https://github.com/Leaflet/Leaflet.draw/issues/701
+                //Workaround from https://github.com/Leaflet/Leaflet.draw/issues/701
                 layer._map = layer._map || map;
                 var label_type = "Circle";
             }
