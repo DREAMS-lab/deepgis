@@ -24,7 +24,7 @@ from django.core.exceptions import ValidationError, MultipleObjectsReturned
 from django.core.validators import URLValidator
 from django.db.models import Count
 from django.http import *
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.template import loader
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
@@ -42,7 +42,7 @@ import csv
 import base64
 import numpy as np
 from .models import *
-from django.contrib.gis.geos import Polygon, MultiPolygon
+from django.contrib.gis.geos import Polygon, MultiPolygon, GeometryCollection
 from webclient.image_ops.convert_images import convert_image_label_to_SVG, convert_category_label_to_SVG
 
 import csv
@@ -99,6 +99,7 @@ def map_label(request):
         'categories': {cat.category_name: str(cat.color) for cat in CategoryType.objects.all()}
 
     }
+    request.session['prev_multipoly'] = str(MultiPolygon())
     return HttpResponse(template.render(context, request))
 
 
@@ -705,6 +706,8 @@ def add_tiled_label(request):
     return JsonResponse(resp_obj)
 
 
+from django.db.models import Q
+
 @csrf_exempt
 def get_all_tiled_labels(request):
     xmin = float(request.GET.get("southwest_lng"))
@@ -715,7 +718,11 @@ def get_all_tiled_labels(request):
     geom = Polygon.from_bbox(bbox)
 
     response_obj = []
-    query_set = TiledGISLabel.objects.filter(geometry__within=geom)
+    previous_bboxes = MultiPolygon()
+    prev_boxes_wkt = request.session.get('prev_multipoly')
+    previous_bboxes = MultiPolygon.from_ewkt(prev_boxes_wkt)
+
+    query_set = TiledGISLabel.objects.filter(geometry__within=geom).filter(~Q(geometry__within=previous_bboxes))
 
     for tiled_label in query_set:
         response_dict = {}
@@ -728,6 +735,10 @@ def get_all_tiled_labels(request):
         response_dict["geoJSON"] = tiled_label.label_json
         response_dict["category"] = tiled_label.category.category_name
         response_obj.append(response_dict)
+
+    previous_bboxes.append(geom)
+    request.session['prev_multipoly'] = str(previous_bboxes)
+    previous_bboxes = MultiPolygon.from_ewkt(str(previous_bboxes))
 
     return JsonResponse(response_obj, safe=False)
 
