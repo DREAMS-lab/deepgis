@@ -715,14 +715,16 @@ def get_all_tiled_labels(request):
     xmax = float(request.GET.get("northeast_lng"))
     ymax = float(request.GET.get("northeast_lat"))
     bbox = (xmin, ymin, xmax, ymax)
-    geom = Polygon.from_bbox(bbox)
+    current_bbox = Polygon.from_bbox(bbox)
 
     response_obj = []
-    previous_bboxes = MultiPolygon()
     prev_boxes_wkt = request.session.get('prev_multipoly')
-    previous_bboxes = MultiPolygon.from_ewkt(prev_boxes_wkt)
+    previous_boxes = MultiPolygon.from_ewkt(prev_boxes_wkt)
+    new_polygon = Polygon()
+    for polygon in previous_boxes:
+        new_polygon = new_polygon.union(polygon)
 
-    query_set = TiledGISLabel.objects.filter(geometry__within=geom).filter(~Q(geometry__within=previous_bboxes))
+    query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox).filter(~Q(geometry__within=new_polygon))
 
     for tiled_label in query_set:
         response_dict = {}
@@ -736,10 +738,8 @@ def get_all_tiled_labels(request):
         response_dict["category"] = tiled_label.category.category_name
         response_obj.append(response_dict)
 
-    previous_bboxes.append(geom)
-    request.session['prev_multipoly'] = str(previous_bboxes)
-    previous_bboxes = MultiPolygon.from_ewkt(str(previous_bboxes))
-
+    previous_boxes.append(current_bbox)
+    request.session['prev_multipoly'] = str(previous_boxes)
     return JsonResponse(response_obj, safe=False)
 
 
@@ -816,13 +816,14 @@ def delete_tile_label(request):
         northeast_Lng = request.get("northeast_lng")
         southwest_Lat = request.get("southwest_lat")
         southwest_Lng = request.get("southwest_lng")
+
         category_name = request.get("category_name")
         if northeast_Lat is None or northeast_Lng is None or \
                 southwest_Lat is None or southwest_Lng is None or category_name is None:
             return HttpResponseBadRequest("Missing required field")
         category = CategoryType.objects.get(category_name=category_name)
         print(category)
-        tile_label = TiledLabel.objects.filter(
+        tile_label = TiledGISLabel.objects.filter(
             northeast_Lat__range=(northeast_Lat - float_tollerance, northeast_Lat + float_tollerance),
             northeast_Lng__range=(northeast_Lng - float_tollerance, northeast_Lng + float_tollerance),
             southwest_Lat__range=(southwest_Lat - float_tollerance, southwest_Lat + float_tollerance),
