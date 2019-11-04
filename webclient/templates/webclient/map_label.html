@@ -45,7 +45,12 @@
 
 
 Rock Traits Decision Support System: <br/>
+
 <div id="mapid" style="height: 800px; width: 1000px; float:left"></div>
+<img id="div_hist"
+     src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
+     alt="Red dot img"/>
+
 <div debug="debug"></div>
 <div style="height: 512px; width: 100px;float: left" id="">
     <form style="margin:15px" id="class_select">
@@ -255,6 +260,26 @@ Rock Traits Decision Support System: <br/>
         zoomLabel.text(map.getZoom().toString());
     })
 
+    function base64toBlob(base64Data, contentType) {
+        contentType = contentType || '';
+        var sliceSize = 1024;
+        var byteCharacters = atob(base64Data);
+        var bytesLength = byteCharacters.length;
+        var slicesCount = Math.ceil(bytesLength / sliceSize);
+        var byteArrays = new Array(slicesCount);
+
+        for (var sliceIndex = 0; sliceIndex < slicesCount; ++sliceIndex) {
+            var begin = sliceIndex * sliceSize;
+            var end = Math.min(begin + sliceSize, bytesLength);
+
+            var bytes = new Array(end - begin);
+            for (var offset = begin, i = 0; offset < end; ++i, ++offset) {
+                bytes[i] = byteCharacters[offset].charCodeAt(0);
+            }
+            byteArrays[sliceIndex] = new Uint8Array(bytes);
+        }
+        return new Blob(byteArrays, {type: contentType});
+    }
     function popUp(feature, layer) {
         layer.bindPopup(feature.properties.name);
     }
@@ -367,6 +392,21 @@ Rock Traits Decision Support System: <br/>
 
 
         });
+        $.ajax({
+            url: "get_histogram_for_window/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
+                map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
+                "&southwest_lng=" + map.getBounds()._southWest.lng.toString(),
+            type: "GET",
+
+            success: function (data) {
+                $("#div_hist").attr('src', "data:image/png;base64, " + data)
+
+
+            }
+
+
+        });
+
 
     });
 

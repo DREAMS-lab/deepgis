@@ -726,6 +726,7 @@ def get_all_tiled_labels(request):
 
     query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox).filter(~Q(geometry__within=new_polygon))
 
+
     for tiled_label in query_set:
         response_dict = {}
         response_dict["northeast_lat"] = tiled_label.northeast_Lat
@@ -743,16 +744,34 @@ def get_all_tiled_labels(request):
     return JsonResponse(response_obj, safe=False)
 
 
-# def get_window_tiled_labels(request):
-#     response_obj = []
-#     float_tollerance = 1e-5
-#     print(request)
-#     request_json = json.load(request)
-#     print(request_json)
-#
-#     tileLabels = TiledGISLabel.objects.filter(poly__within=bbox)
-#
-#     return JsonResponse(response_obj, safe=False)
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+
+import base64
+
+
+@csrf_exempt
+def get_histogram_for_window(request):
+    xmin = float(request.GET.get("southwest_lng"))
+    ymin = float(request.GET.get("southwest_lat"))
+    xmax = float(request.GET.get("northeast_lng"))
+    ymax = float(request.GET.get("northeast_lat"))
+    bbox = (xmin, ymin, xmax, ymax)
+    current_bbox = Polygon.from_bbox(bbox)
+    result_set = []
+    query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox)
+    for polygon in query_set:
+        result_set.append(polygon.geometry.area)
+    area_list = np.asarray(result_set)
+    plt.clf()
+    plt.hist(area_list, 15)
+    response = io.BytesIO()
+    plt.savefig(response, format='png')
+    response.seek(0)
+    encoded_string = base64.b64encode(response.read())
+
+    return HttpResponse(encoded_string, 'contentType: image/PNG')
+
 
 
 @csrf_exempt
