@@ -47,9 +47,14 @@
 Rock Traits Decision Support System: <br/>
 
 <div id="mapid" style="height: 800px; width: 1000px; float:left"></div>
+<div class="num_bins">
+    <div id="demo"></div>
+
+    <input type="range" min="1" max="100" value="20" class="num_bins" id="num_bins">
 <img id="div_hist"
      src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
      alt="Red dot img"/>
+</div>
 
 <div debug="debug"></div>
 <div style="height: 512px; width: 100px;float: left" id="">
@@ -68,6 +73,7 @@ Rock Traits Decision Support System: <br/>
 
 
 <script type="text/javascript">
+
 
     var atlantaTiles = L.tileLayer('/static/rock-tiles/raw/{z}/{x}/{y}.png', {
         attribution: 'ASU, Ramon Arrowsmith',
@@ -253,6 +259,33 @@ Rock Traits Decision Support System: <br/>
         }
     };
 
+    var slider = document.getElementById("num_bins");
+    var output = document.getElementById("demo");
+    output.innerHTML = slider.value; // Display the default slider value
+    slider.oninput = function () {
+        output.innerHTML = this.value;
+    }
+    slider.onchange = function () {
+        output.innerHTML = this.value;
+        document.getElementById("num_bins").disabled = true;
+        var num_bins = output.innerHTML;
+        $.ajax({
+            url: "get_histogram_for_window/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
+                map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
+                "&southwest_lng=" + map.getBounds()._southWest.lng.toString() + "&number_of_bins=" + num_bins,
+            type: "GET",
+
+            success: function (data) {
+                $("#div_hist").attr('src', "data:image/png;base64, " + data)
+                document.getElementById("num_bins").disabled = false;
+
+
+            }
+
+
+        });
+    }
+
 
 
     map.on("zoom",function(event){
@@ -392,10 +425,11 @@ Rock Traits Decision Support System: <br/>
 
 
         });
+        var num_bins = output.innerHTML;
         $.ajax({
             url: "get_histogram_for_window/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
                 map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
-                "&southwest_lng=" + map.getBounds()._southWest.lng.toString(),
+                "&southwest_lng=" + map.getBounds()._southWest.lng.toString() + "&number_of_bins=" + num_bins,
             type: "GET",
 
             success: function (data) {

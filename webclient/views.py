@@ -748,7 +748,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 import base64
-
+import math
 
 @csrf_exempt
 def get_histogram_for_window(request):
@@ -756,20 +756,28 @@ def get_histogram_for_window(request):
     ymin = float(request.GET.get("southwest_lat"))
     xmax = float(request.GET.get("northeast_lng"))
     ymax = float(request.GET.get("northeast_lat"))
+    number_of_bins = int(request.GET.get("number_of_bins"))
+
     bbox = (xmin, ymin, xmax, ymax)
     current_bbox = Polygon.from_bbox(bbox)
     result_set = []
     query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox)
     for polygon in query_set:
-        result_set.append(polygon.geometry.area)
+        geometry = polygon.geometry
+        geometry.srid = 4326
+        geometry.transform(26911)
+        area = geometry.area
+        result_set.append(area)
+
     area_list = np.asarray(result_set)
+    f = plt.figure(figsize=(4, 3))
     plt.clf()
-    plt.hist(area_list, 15)
+    plt.hist((area_list), number_of_bins)
+    plt.tight_layout()
     response = io.BytesIO()
     plt.savefig(response, format='png')
     response.seek(0)
     encoded_string = base64.b64encode(response.read())
-
     return HttpResponse(encoded_string, 'contentType: image/PNG')
 
 
