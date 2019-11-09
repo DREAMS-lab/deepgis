@@ -47,11 +47,11 @@
 Rock Traits Decision Support System: <br/>
 
 <div id="mapid" style="height: 800px; width: 1000px; float:left"></div>
-<div class="num_bins">
+<div class="num_bins">Number of Bins
+    <input type="range" min="1" max="100" value="20" class="num_bins" id="num_bins">
     <div id="demo"></div>
 
-    <input type="range" min="1" max="100" value="20" class="num_bins" id="num_bins">
-<img id="div_hist"
+    <img id="div_hist"
      src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
      alt="Red dot img"/>
 </div>
@@ -262,8 +262,11 @@ Rock Traits Decision Support System: <br/>
     var slider = document.getElementById("num_bins");
     var output = document.getElementById("demo");
     output.innerHTML = slider.value; // Display the default slider value
+    document.getElementById("demo").style.fontSize = "xx-large";
+
     slider.oninput = function () {
         output.innerHTML = this.value;
+
     }
     slider.onchange = function () {
         output.innerHTML = this.value;
@@ -447,6 +450,7 @@ Rock Traits Decision Support System: <br/>
     map.on('draw:deleted', function (e) {
         console.log(e);
         var request_obj = [];
+        var json = e.layers.toGeoJSON();
         e.layers.eachLayer(function (layer) {
             if (layer instanceof  L.Rectangle) {
                 var label_type = "Rectangle";
@@ -464,6 +468,8 @@ Rock Traits Decision Support System: <br/>
             }
             console.log(layer._map);
             var bounds = layer.getBounds();
+            var jsonMessage = JSON.stringify(layer.toGeoJSON());
+
             var northeast = bounds.getNorthEast();
             var southwest = bounds.getSouthWest();
             delete_layer_dict = {
@@ -472,6 +478,7 @@ Rock Traits Decision Support System: <br/>
                 southwest_lat: southwest.lat,
                 southwest_lng: southwest.lng,
                 label_type: label_type,
+                geojson: jsonMessage,
                 category_name: color_to_category[layer.options.color]
             };
             request_obj.push(delete_layer_dict);

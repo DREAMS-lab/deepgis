@@ -773,6 +773,8 @@ def get_histogram_for_window(request):
     f = plt.figure(figsize=(4, 3))
     plt.clf()
     plt.hist((area_list), number_of_bins)
+    plt.xlabel('Rock area (sq. m)')
+    plt.ylabel('Count')
     plt.tight_layout()
     response = io.BytesIO()
     plt.savefig(response, format='png')
@@ -848,17 +850,14 @@ def delete_tile_label(request):
         if northeast_Lat is None or northeast_Lng is None or \
                 southwest_Lat is None or southwest_Lng is None or category_name is None:
             return HttpResponseBadRequest("Missing required field")
-        category = CategoryType.objects.get(category_name=category_name)
-        print(category)
-        tile_label = TiledGISLabel.objects.filter(
-            northeast_Lat__range=(northeast_Lat - float_tollerance, northeast_Lat + float_tollerance),
-            northeast_Lng__range=(northeast_Lng - float_tollerance, northeast_Lng + float_tollerance),
-            southwest_Lat__range=(southwest_Lat - float_tollerance, southwest_Lat + float_tollerance),
-            southwest_Lng__range=(southwest_Lng - float_tollerance, southwest_Lng + float_tollerance),
-            category=category)
+        category = CategoryType.objects.get(category_name='wildlife')
+        jsonStr = json.loads(request.get('geojson'))
+        s = str(jsonStr["geometry"])
+        poly = GEOSGeometry(s)
+        tile_label = TiledGISLabel.objects.filter(category=category).filter(geometry__equals=poly)
 
         if not tile_label:
-            return HttpResponseBadRequest("Label not found")
+            return HttpResponseBadRequest('ERROR' + category_name)
         if len(tile_label) > 1:
             return HttpResponseBadRequest("Request ambigous")
         to_delete.append(tile_label[0])
@@ -867,7 +866,7 @@ def delete_tile_label(request):
     # If there's an error don't change database
     for label in to_delete:
         label.delete()
-    return HttpResponse("Sucess")
+    return JsonResponse('Success', safe=False)
 
 
 @csrf_exempt
