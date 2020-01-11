@@ -326,7 +326,7 @@ def getNewImage(request):
 
     img = None
     for im in images:
-        index = randint(0, len(images))
+        index = randint(0, len(images)-1)
         i = images[index]
         subimage = crop_images.getImageWindow(i, request.user, ignore_max_count=ignore_max_count)
         if subimage is not None:
