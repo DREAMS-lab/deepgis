@@ -12,7 +12,7 @@ import SVGRegex
 from webclient.image_ops import crop_images
 import numpy as np
 import imageio
-
+import tensorflow as tf
 
 IMAGE_FILE_EXTENSION = '.png'
 
@@ -189,7 +189,7 @@ def image_label_string_to_SVG_string(DBStr, height=None, width=None, keepImage=F
 
 
 def image_labels_to_countable_npy():
-    _user = User.objects.filter(username='sarah')[0]
+    _user = User.objects.filter(username='Rinku1234')[0]
     _labeler = Labeler.objects.filter(user=_user)[0]
     labels = ImageLabel.objects.filter(labeler=_labeler)
     foldername = 'npy'
@@ -202,7 +202,7 @@ def image_labels_to_countable_npy():
         height = parent_image.height
         width = parent_image.width
         total_paths = 254
-        masks_ndarray = np.zeros((total_paths, height, width))
+        masks_ndarray = np.zeros((total_paths, height, width), dtype=np.float)
         ctr = 0
         
         for cat_id, categorylabel in enumerate(categorylabels):
@@ -239,7 +239,22 @@ def image_labels_to_countable_npy():
         print(masks_ndarray.shape)
         np.save(outputFilenameNpy,masks_ndarray)
 
+        def float_feature(value):
+         return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
+        # open tfrecord file
+        train_data_path = (settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + '.tfrecord')
+        writer = tf.io.TFRecordWriter(train_data_path)
+
+        feature_dict = {
+         'f_array': float_feature(masks_ndarray.flatten()),
+        }
+
+        # make train example
+        example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
+
+        # write on the file
+        writer.write(example.SerializeToString())
 
 
 def category_label_string_to_SVG_string(category_label, keepImage=False):
