@@ -49,6 +49,8 @@ Rock Traits Decision Support System: <br/>
 <div id="mapid" style="height: 800px; width: 1000px; float:left"></div>
 <div class="num_bins">Number of Bins
     <input type="range" min="1" max="100" value="20" class="num_bins" id="num_bins">
+        <input type="range" min="1" max="100" value="20" class="num_bins" id="num_bins">
+
     <div id="demo"></div>
 
     <img id="div_hist"
@@ -101,6 +103,7 @@ Rock Traits Decision Support System: <br/>
 
     map.setView([37.45242778, -118.44222222], 23);
     var geoData;
+
 
     $.getJSON({
         url: "get_all_tiled_labels/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +

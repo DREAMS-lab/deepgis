@@ -850,7 +850,7 @@ def delete_tile_label(request):
         if northeast_Lat is None or northeast_Lng is None or \
                 southwest_Lat is None or southwest_Lng is None or category_name is None:
             return HttpResponseBadRequest("Missing required field")
-        category = CategoryType.objects.get(category_name='wildlife')
+        category = CategoryType.objects.get(category_name=category_name)
         jsonStr = json.loads(request.get('geojson'))
         s = str(jsonStr["geometry"])
         poly = GEOSGeometry(s)
