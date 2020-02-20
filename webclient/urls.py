@@ -36,9 +36,11 @@ urlpatterns = [
     url(r'^get_overlayed_combined_image/(?P<image_label_id>[0-9]*)$', views.get_overlayed_combined_image),
     url(r'^get_overlayed_category_image/(?P<category_label_id>[0-9]*)$', views.get_overlayed_category_image),
     url(r'^get_all_tiled_labels/', views.get_all_tiled_labels, name='get_all_tiled_labels'),
-    path('addTiledLabel', views.add_tiled_label),
+                  url(r'^get_histogram_for_window/', views.get_histogram_for_window, name='get_histogram_for_window'),
+
+                  path('addTiledLabel', views.add_tiled_label),
     path('TiledLables',views.get_all_tiled_labels),
-    path('WindowTiledLables', views.get_window_tiled_labels),
+                  # path('WindowTiledLables', views.get_window_tiled_labels),
     path('addTiledImage', views.add_train_image_label),
     path('addTiledCategories', views.add_all_tiled_categories),
     path('deleteTileLabels', views.delete_tile_label),
