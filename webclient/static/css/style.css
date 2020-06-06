@@ -1,16 +1,14 @@
 html, body {
-    /*margin: 0;
-    overflow: hidden;
-    height: 100%; */
-    background-repeat: no-repeat;
-
-
+  /*margin: 0;
+  overflow: hidden;
+  height: 100%; */
+  background-repeat: no-repeat;
 }
 div #toolbars {
-    visibility: hidden;
-    display:none;
-font-size:13pt;
-font-family:arial;
+  visibility: hidden;
+  display:none;
+  font-size:13pt;
+  font-family: 'Roboto', sans-serif;
 }
 /* Scale canvas with resize attribute to full size
 canvas[resize] {
@@ -19,75 +17,271 @@ canvas[resize] {
 } */
 
 button #next {
-    type:submit;
+  type:submit;
 }
 
 div #canvasDiv {
-font-size:13pt;
-font-family:arial;
+  font-size:13pt;
+  font-family:'Roboto', sans-serif;
+  width: 1000px;
+  height: 1000px;
 }
 
 div #canvasWrapper {
-
-   /* border: 20px inset rgba(0,0,0, 0.5);*/
-    width: 1920px;
-    height: 1080px;
+ /* border: 20px inset rgba(0,0,0, 0.5);*/
+  width: 1000px;
+  height: 1000px;
 }
 
 
 #canvas {
     border: 3px solid black;
+    width: 1000px;
+    height: 1000px;
     /*box-shadow: inset 0 0 20px 20px rgba(255,0,0,0.5); */
-
-
 }
 
 
 div #imageControlContainer {
-    padding-top: 75%;
+  padding-top: 75%;
 }
 
 div #imageControl {
-    padding: 2px;
-    border: 1px groove;
-font-size:14pt;
-font-family:arial;
-
+  padding: 2px;
+  border: 1px groove;
+  font-size:14pt;
+  font-family:'Roboto', sans-serif;
 }
 
 #imageControlTd {
-    vertical-align: top;
+  vertical-align: top;
 }
 
 #debug{
-font-size:15pt;
-font-family:arial;
-font-weight:bold;
-font-style:italic;
-color:#800000;
+  font-size:15pt;
+  font-family:'Roboto', sans-serif;
+  font-weight:bold;
+  font-style:italic;
+  color:#800000;
 }
 #controls{
-font-size:13pt;
-font-family:arial;
+  display: flex;
+  position: relative;
+  left 10px;
+  font-size:13pt;
+  font-family:'Roboto', sans-serif;
 }
 
 #displayTable td,tr{
-    width: 100px;
+  width: 100px;
+}
+
+#displayTable {
+  margin-bottom: 50px;
 }
 
 
 #info{
-    font-size:15pt;
-    font-family:"Helvetica Neue";
-    color:white;
-    background-color: black;
-    opacity:0.7;
-    background-position:center;
+  font-size:15pt;
+  font-family:'Roboto', sans-serif;
+  color:white;
+  background-color: black;
+  opacity:0.7;
+  background-position:center;
 
 
 }
 
 #tips{
-    padding-left: 0px;
-    text-align: left;
+  width: 1000px;
+  padding-left: 0px;
+  text-align: left;
+}
+
+.grid {
+  font-size: 1rem;
+  padding-left: 20px;
+  padding-right: 20px;
+  display: inline-grid;
+  grid-template-columns: 5% 80% 15%;
+  width: 100%;
+  height: 50px;
+  text-align: left;
+  align-items: center;
+  color: #999999;
+}
+
+.grid:hover
+{
+  text-decoration: none;
+  color: #fff;
+  /* background: rgba(255, 255, 255, 0.1); */
+  border-radius: 5px;
+  -webkit-transition: all 0.5s ease;
+  -moz-transition: all 0.5s ease;
+  -o-transition: all 0.5s ease;
+  transition: all 0.5s ease;
+}
+
+.grid label {
+  margin: 0px;
+  align-items: center;
+}
+
+.grid label:hover
+{
+  cursor: pointer;
+}
+
+.bold {
+  font-weight:bold;
+}
+
+.gpsDiv {
+  position: absolute;
+  display: flex;
+  right: 0px;
+  bottom: 5px;
+  padding: 10px;
+  background-color: #151B29;
+  color: white;
+  font-size: 14px;
+  white-space: pre;
+  border-radius: 0px 5px 0px 0px;
+}
+
+.gpsLat, .gpsLon {
+  width: 150px;
+  float: left;
+}
+
+.scaleText {
+  width: 70px;
+  float: left;
+}
+
+.logoutBtn {
+  position: fixed;
+  background-color: red;
+  color: white;
+  top: 10px;
+  right: 20px;
+  font-size:13pt;
+  font-family:'Roboto', sans-serif;
+}
+
+.btn {
+  min-width: 150px !important;
+  margin-top: 10px !important;
+  margin-bottom: 10px !important;
+  padding: 8px !important;
+}
+
+#image_info {
+  margin-top: 100px;
+}
+
+i {
+  margin-right: 10px;
+}
+
+.scaleDivContent {
+  height: 25px;
+  border-color: white;
+  width: 100px;
+  border-width: 1px;
+  color: white;
+  text-align: center;
+  white-space: pre;
+  border-style: none solid solid solid;
+}
+
+.scaleDiv
+{
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  background-color: #151B29;
+  color: white;
+  font-size: 14px;
+  width: auto;
+  height: auto;
+  padding: 5px;
+  padding-top: 10px;
+  border-radius: 5px 0px 0px 0px;
+}
+
+.craterDivContent {
+  height: auto;
+  color: white;
+  text-align: center;
+  white-space: pre;
+  font-size: 14px;
+  padding: 5px;
+}
+
+.craterDiv
+{
+  position: absolute;
+  left: 250px;
+  bottom: 5px;
+  color: white;
+  width: auto;
+  height: auto;
+  padding: 5px;
+}
+
+.footer {
+  bottom: 0px;
+  position: sticky;
+  width: 100%;
+  background-color: #151B29;
+  height: 50px;
+}
+
+/* The snackbar - position it at the bottom and in the middle of the screen */
+#snackbar {
+ visibility: hidden; /* Hidden by default. Visible on click */
+ min-width: 250px; /* Set a default minimum width */
+ margin-left: -125px; /* Divide value of min-width by 2 */
+ background-color: #151B29; /* Black background color */
+ color: #fff; /* White text color */
+ text-align: center; /* Centered text */
+ border-radius: 5px; /* Rounded borders */
+ padding: 16px; /* Padding */
+ position: fixed; /* Sit on top of the screen */
+ z-index: 1; /* Add a z-index if needed */
+ right: 30px; /* 30 px from the right */
+ bottom: 30px; /* 30px from the bottom */
+ font-size: 14px;
+}
+
+/* Show the snackbar when clicking on a button (class added with JavaScript) */
+#snackbar.show {
+ visibility: visible; /* Show the snackbar */
+ /* Add animation: Take 0.5 seconds to fade in and out the snackbar.
+ However, delay the fade out process for 2.5 seconds */
+ -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+ animation: fadein 0.5s, fadeout 0.5s 2.5s;
+}
+
+/* Animations to fade the snackbar in and out */
+@-webkit-keyframes fadein {
+ from {bottom: 0; opacity: 0;}
+ to {bottom: 30px; opacity: 1;}
+}
+
+@keyframes fadein {
+ from {bottom: 0; opacity: 0;}
+ to {bottom: 30px; opacity: 1;}
+}
+
+@-webkit-keyframes fadeout {
+ from {bottom: 30px; opacity: 1;}
+ to {bottom: 0; opacity: 0;}
+}
+
+@keyframes fadeout {
+ from {bottom: 30px; opacity: 1;}
+ to {bottom: 0; opacity: 0;}
 }
