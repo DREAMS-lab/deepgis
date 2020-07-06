@@ -10,7 +10,7 @@ RUN apt-get install -y python3-pip python3-dev software-properties-common \
   && ln -s /usr/bin/python3 python \
   && pip3 install --upgrade pip
 
-FROM python:3
+FROM python:3.6.9
 ENV PYTHONUNBUFFERED 1
 RUN mkdir /code
 WORKDIR /code
@@ -28,7 +28,7 @@ RUN pip3 install requests
 RUN pip3 install matplotlib
 RUN pip3 install descartes
 RUN pip3 install ipython
-RUN pip3 install scipy
+
 RUN pip3 install shapely
 RUN pip3 install geojson
 

@@ -3,26 +3,26 @@ version: '2'
 services:
   db:
     build: dockerfiles/postgres/
+    environment:
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=postgres
     volumes:
-      - persistent-storage:/var/lib/postgresql/data
+      - e5cec1a1003c60bb6640d759cf299539cb4f171f5daa1959d07234ce6e8ae6d1:/var/lib/postgresql/data
   web:
     build: dockerfiles/django/
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8124:8000"
     depends_on:
       - db
     volumes:
       - ./:/app
-      - /home/jdas:/home/jdas
     working_dir: /app
     command: bash -c "python3 manage.py makemigrations webclient && python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
 
-networks:  
+networks:
   default:
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.32.0.0/16
-          gateway: 172.32.0.1
+    external:
+      name: deepgis_moon_default
 volumes:
-  persistent-storage:
+  e5cec1a1003c60bb6640d759cf299539cb4f171f5daa1959d07234ce6e8ae6d1:
+    external: true

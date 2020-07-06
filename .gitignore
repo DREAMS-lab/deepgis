@@ -4,4 +4,13 @@
 agdss/settings/prod.py
 annotable/*
 static-root/*
+static/*
+deepgis_moon_backup/*
+logs.txt
+logs/
+mask_rcnn_coco.h5
+output.png
+rinku/*
+webclient/store_npy.py
+webclient/templates/webclient/backups/*
 

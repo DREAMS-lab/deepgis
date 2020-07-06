@@ -1,0 +1,15 @@
+.container {
+  display: grid;
+  grid-template-columns: 60% 40%;
+  margin: 10px;
+}
+
+.container-child {
+  width: auto;
+  height: auto;
+}
+
+.map {
+  width: 1000px;
+  height: 720px;
+}

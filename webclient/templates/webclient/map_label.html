@@ -2,36 +2,34 @@
 
 <html>
 <head>
-    <title>DeepGIS -- Rocks </title>
+    <title>DeepGIS -- Moon </title>
     <script type="text/javascript" src="/static/scripts/dom-to-image.min.js"></script>
-
-    <script src="/static/scripts/leaflet/leaflet.js">
-
-    <script type="text/javascript" src="/static/scripts/dom-to-image.min.js"></script>
+    <script src="/static/scripts/leaflet/leaflet.js"></script>
+    <script type = "text/javascript" src = "/static/scripts/dom-to-image.min.js" ></script>
     <link rel="stylesheet" href="/static/scripts/leaflet.draw/leaflet.draw.css"/>
     <script src="/static/scripts/leaflet.draw/leaflet.draw.js"></script>
     <script src="/static/scripts/jQuery/jquery-3.0.0.min.js"></script>
     <script src="/static/scripts/index.js"></script>
-    <script src="/static/scripts/jQuery/jquery-3.0.0.min.js"></script>
-        <link rel="stylesheet" href="/static/scripts/leaflet/leaflet.css"/>
+    <link rel="stylesheet" href="/static/scripts/leaflet/leaflet.css"/>
+
+    <!-- stylesheet for leaflet app -->
+    <link rel="stylesheet" href="/static/css/map_style.css">
 
     <!-- Make sure you put this AFTER Leaflet's CSS -->
-    </script>
-
     <script type="text/javascript">
 
-    function project(lat, lng, zoom) {
-        var d = Math.PI / 180,
-            max = 1 - 1E-15,
-            sin = Math.max(Math.min(Math.sin(lat * d), max), -max),
-            scale = 256 * Math.pow(2, zoom);
+        function project(lat, lng, zoom) {
+            var d = Math.PI / 180,
+                max = 1 - 1E-15,
+                sin = Math.max(Math.min(Math.sin(lat * d), max), -max),
+                scale = 256 * Math.pow(2, zoom);
 
-        var point = {
-            x: R * lng * d,
-            y: R * Math.log((1 + sin) / (1 - sin)) / 2
-        };
-        return point;
-    }
+            var point = {
+                x: R * lng * d,
+                y: R * Math.log((1 + sin) / (1 - sin)) / 2
+            };
+            return point;
+        }
 
     function tiled(num) {
         return Math.floor(num / 256);
@@ -39,63 +37,90 @@
     </script>
 </head>
 <body>
+<div class="container" id="main-container">
+  <!-- leaflet grid item -->
+  <div class="container-child" id="map-container">
+    <div id="mapid" class="map"></div>
+  </div>
+  <!-- details grid item -->
+  <div class="container-child" id="map-details">
+    <div class="num_bins">Number of Bins
+        <input type="range" min="1" max="100" value="20" class="num_bins" id="num_bins">
+            <input type="range" min="1" max="100" value="20" class="num_bins" id="num_bins">
 
+        <div id="demo"></div>
 
-Rock Traits Decision Support System: <br/>
-<div id="mapid" style="height: 800px; width: 1000px; float:left"></div>
-<div debug="debug"></div>
-<div style="height: 512px; width: 100px;float: left" id="">
-    <form style="margin:15px" id="class_select">
-        {% for category_name, color in categories.items %}
+        <img id="div_hist"
+         src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
+         alt="Red dot img"/>
+    </div>
+
+    <div debug="debug"></div>
+    <div style="height: 512px; width: 100px;float: left" id="">
+        <form style="margin:15px" id="class_select">
+            {% for category_name, color in categories.items %}
             <label style="color:{{ color }}">
                 <input type="radio" name="label_class" value="{{ category_name }}">
                 {{ category_name }}
             </label><br/>
-        {% endfor %}
-        <br/>
-        <br/>
-        <label>Current Zoom: </label><label id="currentZoomLabel">22</label>
-    </form>
+            {% endfor %}
+            <br/>
+            <br/>
+            <label>Current Zoom: </label><label id="currentZoomLabel">2</label>
+        </form>
+    </div>
+  </div>
 </div>
-
 
 <script type="text/javascript">
 
-    var atlantaTiles = L.tileLayer('/static/rock-tiles/raw/{z}/{x}/{y}.png', {
-        attribution: 'ASU, Ramon Arrowsmith',
-        maxZoom: 23,
+
+    var moonTiles = L.tileLayer('/static/moon-tiles/{z}/{x}/{y}.png', {
+        attribution: 'ASU',
+        minZoom: 2,
+        maxZoom: 9,
+        noWrap: true,
         id: 'mapbox.streets',
-	tms: true
+        tms: true
     });
 
-    var predictTiles = L.tileLayer('/static/rock-tiles/prediction/{z}/{x}/{y}.png', {
-        minZoom: 15,
-        maxZoom: 23,
+    var predictTiles = L.tileLayer('/static/moon-tiles/prediction/{z}/{x}/{y}.png', {
+        minZoom: 2,
+        maxZoom: 9,
         id: 'mapbox.streets2',
-	tms: true
+        tms: true
     });
 
     var map = L.map('mapid', {
-        minZoom: 15,
-        maxZoom: 23,
-        layers: [atlantaTiles],
+        minZoom: 2,
+        maxZoom: 9,
+        layers: [moonTiles],
         updateWhenZooming:false,
         updateWhenIdle: true,
         preferCanvas: true
-
     });
 
-    map.setView([37.45242778, -118.44222222], 23);
+    //adding scale to the map
+    L.control.scale().addTo(map);
+
+    map.setView([0, 0], 2);
     var geoData;
 
-    $.getJSON("{% url 'get_all_tiled_labels' %}", function (data) {
-        // alert(data);
-    geoData = data;
-        for (i = 0; i < geoData.length; i++) {
-            draw_shapes(geoData[i].geoJSON, geoData[0].geoJSON.type)
-        }
-    });
+    $.getJSON({
+        url: "get_all_tiled_labels/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
+            map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
+            "&southwest_lng=" + map.getBounds()._southWest.lng.toString(),
+        type: "GET",
 
+        success: function (data) {
+            geoData = data;
+            for (i = 0; i < geoData.length; i++) {
+                draw_shapes(geoData[i].geoJSON, geoData[0].geoJSON.type)
+            }
+        }
+
+
+    });
 
 
     //Global vars:
@@ -106,7 +131,7 @@ Rock Traits Decision Support System: <br/>
         bounds = map.getBounds();
         //alert(bounds);
         console.log(bounds);
-        var zoom = 23;
+        var zoom = 2;
 
         //north, west
         var min = project(bounds._northEast.lat, bounds._southWest.lng, zoom);
@@ -144,9 +169,10 @@ Rock Traits Decision Support System: <br/>
     var baseLayers = {};
 
     var overlays = {
-        "Raster raw": atlantaTiles,
-        "Raster predictions": predictTiles,
-        "Vector annotations": drawnItems
+      "Raster raw": moonTiles,
+      "Raster predictions": predictTiles,
+      "Vector annotations": drawnItems,
+        // "LOLA Annotations": lolaAnnotations,
     };
 
     L.control.layers(baseLayers, overlays,{collapsed:false}).addTo(map);
@@ -161,7 +187,7 @@ Rock Traits Decision Support System: <br/>
             imageData = result;
 
             map.addLayer(drawnItems);
-            map.removeLayer(atlantaTiles);
+            map.removeLayer(moonTiles);
 
 
             printer.printMap('CurrentSize', 'test2').then(function (imResult) {
@@ -172,7 +198,7 @@ Rock Traits Decision Support System: <br/>
                 requestObj.image_name = fileName;
                 requestObj.category_name = catergoryClassName;
 
-                map.addLayer(atlantaTiles);
+                map.addLayer();
                 map.addLayer(predictTiles);
                 fetch("../webclient/addTiledImage", {
                     body: JSON.stringify(requestObj),
@@ -211,7 +237,7 @@ Rock Traits Decision Support System: <br/>
     draw_shapes = function (geoJson, label_type) {
         geoJson.properties.options.weight = 0.5;
         if (label_type == "circle") {
-           circleLayer = L.circle([geoJson.geometry.coordinates[1], geoJson.geometry.coordinates[0]], geoJson.properties.options);
+            circleLayer = L.circle([geoJson.geometry.coordinates[1], geoJson.geometry.coordinates[0]], geoJson.properties.options);
             drawnItems.addLayer(circleLayer);
         } else if (label_type.toLowerCase() == "rectangle") {
             var rectLayer = L.rectangle([[geoJson.geometry.coordinates[0][0].slice().reverse(), geoJson.geometry.coordinates[0][1].slice().reverse(),
@@ -227,6 +253,7 @@ Rock Traits Decision Support System: <br/>
             }
 
             var polyLayer = L.polygon(coords, geoJson.properties.options);
+
             drawnItems.addLayer(polyLayer);
         } else {
             var geoJsonLayer = L.geoJSON(geoJson, geoJson.properties.options);
@@ -234,19 +261,88 @@ Rock Traits Decision Support System: <br/>
         }
     };
 
+    var slider = document.getElementById("num_bins");
+    var output = document.getElementById("demo");
+    output.innerHTML = slider.value; // Display the default slider value
+    document.getElementById("demo").style.fontSize = "xx-large";
+
+    slider.oninput = function () {
+        output.innerHTML = this.value;
+
+    }
+    slider.onchange = function () {
+        output.innerHTML = this.value;
+        document.getElementById("num_bins").disabled = true;
+        var num_bins = output.innerHTML;
+        // $.ajax({
+        //     url: "get_histogram_for_window/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
+        //         map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
+        //         "&southwest_lng=" + map.getBounds()._southWest.lng.toString() + "&number_of_bins=" + num_bins,
+        //     type: "GET",
+        //
+        //     success: function (data) {
+        //         $("#div_hist").attr('src', "data:image/png;base64, " + data)
+        //         document.getElementById("num_bins").disabled = false;
+        //
+        //
+        //     }
+        //
+        //
+        // });
+    }
+
 
 
     map.on("zoom",function(event){
         var zoomLabel = $("#currentZoomLabel");
         zoomLabel.text(map.getZoom().toString());
-    })
+    });
 
+
+    // //execute when zoom has finished
+    // map.on("zoomend", function(event){
+    //   //display crater annotations only when zoom level is 6 or above
+    //   if(map.getZoom()>=5)
+    //   {
+    //     console.log("Zoom level satisfied");
+    //   }
+    //   else {
+    //     console.log("Zoom level not satisfied");
+    //   }
+    // });
+
+    //execute when zoom has finished
+    map.on("moveend", function(event){
+      drawCraterAnnotationsFromDB();
+    });
+
+    function base64toBlob(base64Data, contentType) {
+        contentType = contentType || '';
+        var sliceSize = 1024;
+        var byteCharacters = atob(base64Data);
+        var bytesLength = byteCharacters.length;
+        var slicesCount = Math.ceil(bytesLength / sliceSize);
+        var byteArrays = new Array(slicesCount);
+
+        for (var sliceIndex = 0; sliceIndex < slicesCount; ++sliceIndex) {
+            var begin = sliceIndex * sliceSize;
+            var end = Math.min(begin + sliceSize, bytesLength);
+
+            var bytes = new Array(end - begin);
+            for (var offset = begin, i = 0; offset < end; ++i, ++offset) {
+                bytes[i] = byteCharacters[offset].charCodeAt(0);
+            }
+            byteArrays[sliceIndex] = new Uint8Array(bytes);
+        }
+        return new Blob(byteArrays, {type: contentType});
+    }
     function popUp(feature, layer) {
-    layer.bindPopup(feature.properties.name);
+        layer.bindPopup(feature.properties.name);
     }
 
     map.on(L.Draw.Event.CREATED, function (event) {
         var layer = event.layer;
+        console.log("Event layer", event.layer.toGeoJSON());
         var geoJson = layer.toGeoJSON();
 
         var ne_lat;
@@ -271,6 +367,8 @@ Rock Traits Decision Support System: <br/>
             propJSON.radius = layer._mRadius;
             geoJson.properties.shape_type = "circle";
             geoJson.properties.radius = layer._mRadius;
+
+            console.log("geoJSON", geoJson);
         } else {
             var bounds = layer.getBounds();
             ne_lat = layer._bounds._northEast.lat;
@@ -297,9 +395,9 @@ Rock Traits Decision Support System: <br/>
             geoJSON: geoJson,
             propJSON: propJSON
         };
-        console.log(requestObj);
 
         draw_shapes(geoJson, event.layerType);
+
 // {#        if (event.layerType == "circle") {#}
 // {#            circleLayer = L.circle([geoJson.geometry.coordinates[1], geoJson.geometry.coordinates[0]], geoJson.properties.options);#}
 //
@@ -322,26 +420,70 @@ Rock Traits Decision Support System: <br/>
         var checkBoxes = document.getElementsByClassName('leaflet-control-layers-selector');
 
         var xhttp = new XMLHttpRequest();
-        xhttp.onreadystatechange = function () {
-            if (this.readyState == 4 && this.status == 200) {
-                printAndSendTrainImage(printedImageName, radio_label_class);
-            }
-        };
+
+        // start of comment by ashwin jose
+        // commenting this to prevent map reload between drawing
+        // xhttp.onreadystatechange = function () {
+        //     if (this.readyState == 4 && this.status == 200) {
+        //         printAndSendTrainImage(printedImageName, radio_label_class);
+        //     }
+        // };
+        // end of comment by ashwin jose
 
         xhttp.open("POST", "/webclient/addTiledLabel", true);
         xhttp.setRequestHeader("Content-Type", "application/json");
         xhttp.send(JSON.stringify(requestObj));
     });
 
+    map.on('moveend', function (e) {
+        $.getJSON({
+            url: "get_all_tiled_labels/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
+                map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
+                "&southwest_lng=" + map.getBounds()._southWest.lng.toString(),
+            type: "GET",
+
+            success: function (data) {
+                geoData = data;
+                // drawnItems.removeLayer(geoJsonLayer);
+                for (j = 0; j < drawnItems.getLayers().length; j++) {
+
+                }
+                for (i = 0; i < geoData.length; i++) {
+                    draw_shapes(geoData[i].geoJSON, geoData[i].geoJSON.type)
+                }
+            }
+
+
+        });
+        var num_bins = output.innerHTML;
+        // $.ajax({
+        //     url: "get_histogram_for_window/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
+        //         map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
+        //         "&southwest_lng=" + map.getBounds()._southWest.lng.toString() + "&number_of_bins=" + num_bins,
+        //     type: "GET",
+        //
+        //     success: function (data) {
+        //         $("#div_hist").attr('src', "data:image/png;base64, " + data)
+        //
+        //
+        //     }
+        //
+        //
+        // });
+
+
+    });
+
     map.on('draw:deleted', function (e) {
         console.log(e);
         var request_obj = [];
+        var json = e.layers.toGeoJSON();
         e.layers.eachLayer(function (layer) {
             if (layer instanceof  L.Rectangle) {
                 var label_type = "Rectangle";
             }
             else if (layer instanceof L.Circle) {
-            //Workaround from https://github.com/Leaflet/Leaflet.draw/issues/701
+                //Workaround from https://github.com/Leaflet/Leaflet.draw/issues/701
                 layer._map = layer._map || map;
                 var label_type = "Circle";
             }
@@ -353,6 +495,8 @@ Rock Traits Decision Support System: <br/>
             }
             console.log(layer._map);
             var bounds = layer.getBounds();
+            var jsonMessage = JSON.stringify(layer.toGeoJSON());
+
             var northeast = bounds.getNorthEast();
             var southwest = bounds.getSouthWest();
             delete_layer_dict = {
@@ -361,6 +505,7 @@ Rock Traits Decision Support System: <br/>
                 southwest_lat: southwest.lat,
                 southwest_lng: southwest.lng,
                 label_type: label_type,
+                geojson: jsonMessage,
                 category_name: color_to_category[layer.options.color]
             };
             request_obj.push(delete_layer_dict);
@@ -387,6 +532,10 @@ Rock Traits Decision Support System: <br/>
     });
 
     $(document).ready(function () {
+
+      // set initial crater db data as NONEMPTY
+      window.craterDBData = [];
+
         set_label_draw_color = function () {
             var color = $(this).parent().css('color');
             drawControl.setDrawingOptions({
@@ -414,8 +563,121 @@ Rock Traits Decision Support System: <br/>
             color_to_category[$(this).parent().css('color')] = $(this).val();
         });
 
-
+        //fetch crater annotations
+        fetchCraterAnnotationsFromDB();
     });
+
+
+    // function to fetch crater info from dataasmap.remove
+    function fetchCraterAnnotationsFromDB() {
+      $.ajax({
+        url: "/webclient/getLOLACraterAnnotations/",
+        type: "GET",
+        dataType: "json",
+        data: {
+          UpperLeftLatitude: -180,
+          UpperLeftLongitude: -180,
+          LowerRightLatitude: 180,
+          LowerRightLongitude: 180,
+        },
+        success: function(response) {
+          window.craterDBData = response;
+        },
+        error: function(xhr, errmsg, err) {
+          alert(xhr.status + ": " + xhr.responseText);
+        }
+      });
+    }
+
+
+    //function to create draw craters fetched from DB
+    function drawCraterAnnotationsFromDB() {
+
+      //get map bounds
+      var bounds = map.getBounds();
+      minLongitude = Math.min(bounds._northEast.lng, bounds._southWest.lng);
+      maxLongitude = Math.max(bounds._northEast.lng, bounds._southWest.lng);
+      minLatitude = Math.min(bounds._northEast.lat, bounds._southWest.lat);
+      maxLatitude = Math.max(bounds._northEast.lat, bounds._southWest.lat);
+
+      // display craters based on zoom level
+      var zoomLevel = map.getZoom();
+      var minDiameter = 0;
+      if(zoomLevel<=3)
+        minDiameter = 200000;
+      else if (zoomLevel<=4) {
+        minDiameter = 100000;
+      }
+      else {
+        minDiameter = 0;
+      }
+
+
+      //clear all current items
+      drawnItems.clearLayers();
+      map.removeLayer(drawnItems)
+      if(window.craterDBData.length!==0) {
+        for(i=0;i<window.craterDBData.length;i++)
+        {
+          var lon = window.craterDBData[i][0];
+          var lat = window.craterDBData[i][1];
+          var diameter = window.craterDBData[i][2]*2000;
+          if(lon<=maxLongitude&&lon>=minLongitude&&lat>=minLatitude&&lat<=maxLatitude&&diameter>=minDiameter)
+          {
+            var circle = L.circle([lat, lon], diameter);
+            drawnItems.addLayer(circle);
+          }
+        }
+      }
+      map.addLayer(drawnItems);
+
+      // var layer = event.layer;
+      // var geoJson = layer.toGeoJSON();
+      //
+      // var ne_lat;
+      // var ne_lng;
+      // var sw_lat;
+      // var sw_lng;
+      //
+      // var propJSON = {};
+      // console.log(event.layerType);
+      // event.layerType == "circle") {
+      //     layer.addTo(map);
+      //     var bounds = layer.getBounds();
+      //     layer.removeFrom(map);
+      //     var northeast = bounds.getNorthEast();
+      //     var southwest = bounds.getSouthWest();
+      //     ne_lat = layer._latlng.lat + layer._mRadius;
+      //     ne_lng = layer._latlng.lng + layer._mRadius;
+      //     sw_lat = layer._latlng.lat - layer._mRadius;
+      //     sw_lng = layer._latlng.lng - layer._mRadius;
+      //     propJSON.latlng = layer._latlng;
+      //     propJSON.radius = layer._mRadius;
+      //     geoJson.properties.shape_type = "circle";
+      //     geoJson.properties.radius = layer._mRadius;
+      // }
+      // //layer.options.weight = 0.5;
+      //
+      // geoJson.properties.options = layer.options;
+      //
+      // var radio_label_class = $("input:radio[name=label_class]:checked").val();
+      //
+      // requestObj = {
+      //     northeast_lat: ne_lat,
+      //     northeast_lng: ne_lng,
+      //     southwest_lat: sw_lat,
+      //     southwest_lng: sw_lng,
+      //     zoom_level: map.getZoom(),
+      //     label_type: "circle",
+      //     category_name: radio_label_class,
+      //     geoJSON: geoJson,
+      //     propJSON: propJSON
+      // };
+      // console.log(requestObj);
+      //
+      // draw_shapes(geoJson, event.layerType);
+    }
+
 </script>
 <br/>
 
@@ -424,4 +686,3 @@ Rock Traits Decision Support System: <br/>
   -->
 </body>
 </html>
-
