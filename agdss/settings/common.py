@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'q82m6os5(_m4s7tabkfsz1y90dsnz1q(_c^+u&zs+ffftgs*2$'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -137,6 +137,6 @@ STATIC_ROOT = "/app/static-root/"
 CATEGORY_TO_LABEL = 'crater'
 LABEL_FOLDER_NAME = 'labels/'
 STATICFILES_DIRS = (
-'/home/jdas/',
+'/home/deepgis/deepgis_moon/',
 )
 

@@ -12,7 +12,7 @@ import SVGRegex
 from webclient.image_ops import crop_images
 import numpy as np
 import imageio
-import tensorflow as tf
+from cairosvg import svg2png
 
 IMAGE_FILE_EXTENSION = '.png'
 
@@ -106,7 +106,7 @@ def SVGStringToImageBlob(svg):
 
 
 def image_label_to_SVG_String_file(label):
-    SVG_string_file = io.StringIO(image_label_string_to_SVG_string(label.combined_labelShapes))
+    SVG_string_file = io.StringIO(image_label_string_to_SVG_string(label.combined_labelShapes, 210, 210, True))
     SVG_string_file.seek(0)
     return SVG_string_file.read().encode('utf-8')
 
@@ -127,6 +127,21 @@ def render_SVG_from_label(label):
     if isinstance(label, ImageLabel):
         svg = label.combined_labelShapes
         svg_file = image_label_to_SVG_String_file(label)
+        #convert svg string to png using cairo
+        svg2png(bytestring=svg_file, write_to="output.png")
+        try:
+            with WandImage(filename='output.png') as img:
+                img.format = 'png'
+                return img.make_blob()
+        except wand.exceptions.CoderError as e:
+            raise RuntimeError(('Failed to convert: ' + svg + ': ' + str(e)))
+        except wand.exceptions.MissingDelegateError as e:
+            raise RuntimeError(('DE Failed to convert: ' + svg + ': ' + str(e)))
+        except wand.exceptions.WandError as e:
+            raise RuntimeError(('Failed to convert ' + svg + ': ' + str(e)))
+        except ValueError as e:
+            raise RuntimeError(('Failed to convert ' + svg + ': ' + str(e)))
+
     elif isinstance(label, CategoryLabel):
         svg = label.labelShapes
         svg_file = category_label_to_SVG_String_file(label)
@@ -177,6 +192,17 @@ def SVGDimensions(str):
 # Otherwise, height and width are extracted from it and it is removed
 def image_label_string_to_SVG_string(DBStr, height=None, width=None, keepImage=False):
     addedStr = DBStr
+    #get the image path
+    imagePath = ""
+    imageString = ""
+    if keepImage:
+        imagePath = re.search('ns1:href="(.*)png"', DBStr)
+        imagePath = imagePath.group(1)+"png"
+        imageString = '<defs><pattern id="backgroundImage" ' \
+        'patternUnits="userSpaceOnUse" width="%s" height="%s">' \
+        '<image xlink:href="%s" x="0" y="0" width="%s" height="%s"/>' \
+        '</pattern></defs><rect id="background" fill="url(#backgroundImage)" '\
+        'width="%s" height="%s"/>' %(width, height, imagePath, width, height, width, height)
     if height == None or width == None:
         image, height, width = SVGDimensions(DBStr)
         if not keepImage and image:
@@ -185,11 +211,11 @@ def image_label_string_to_SVG_string(DBStr, height=None, width=None, keepImage=F
     return '<?xml version="1.0" encoding="UTF-8" standalone="no"?>' \
            '<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg"' \
            ' xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" xml:space="preserve" height="%s"' \
-           ' width="%s">%s</svg>\n' % (height, width, addedStr)
+           ' width="%s">%s\n%s</svg>\n' % (height, width, imageString, addedStr)
 
 
 def image_labels_to_countable_npy():
-    _user = User.objects.filter(username='Rinku1234')[0]
+    _user = User.objects.filter(username='Labeler1')[0]
     _labeler = Labeler.objects.filter(user=_user)[0]
     labels = ImageLabel.objects.filter(labeler=_labeler)
     foldername = 'npy'
@@ -201,20 +227,22 @@ def image_labels_to_countable_npy():
         categorylabels = label.categorylabel_set.all()
         height = parent_image.height
         width = parent_image.width
-        total_paths = 254
-        masks_ndarray = np.zeros((total_paths, height, width), dtype=np.float)
+        total_paths = 300
+        masks_ndarray = np.zeros((total_paths, height, width), dtype=np.int8)
         ctr = 0
         
         for cat_id, categorylabel in enumerate(categorylabels):
             svg = categorylabel.labelShapes
             paths = []
             poly = []
+            print(filename, svg)
             paths = re.findall(SVGRegex.rePath, svg)
             poly = re.findall(SVGRegex.rePolygon, svg)
-            shapes = paths + poly
-            if len(paths) + len(poly) > 0:
+            circles = re.findall(SVGRegex.reCircle, svg)
+            shapes = paths + poly + circles
+            if len(paths) + len(poly) +len(circles) > 0:
                 for idx,path in enumerate(shapes):
-                    print(ctr, cat_id, idx, path)
+                    print("logging image info:----",filename, ctr, cat_id, idx, path)
                     img=WandImage(blob=image_string_to_SVG_string_file(image_label_string_to_SVG_string(path, height, width)))
                     img.resize(width,height)
                     img.background_color = WandColor('white')
@@ -234,7 +262,7 @@ def image_labels_to_countable_npy():
                     masks_ndarray[ctr, :, :] = cat_mask
                     ctr = ctr + 1
             else:
-                print(ctr, cat_id, 0, 'EMPTY')
+                print(filename, ctr, cat_id, 0, 'EMPTY')
         masks_ndarray.resize(ctr, height, width)
         print(masks_ndarray.shape)
         np.save(outputFilenameNpy,masks_ndarray)

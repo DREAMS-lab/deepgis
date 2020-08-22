@@ -15,7 +15,7 @@ def run():
                 path_basename = os.path.basename(os.path.normpath(path)) + '/'
                 print(path_basename, filename)
                 image_name = filename
-                description = "particle"
+                description = "hypolith"
                 if ImageSourceType.objects.filter(description=description).count() > 0:
                     sourceType = ImageSourceType.objects.filter(description=description)[0]
                 else:
@@ -25,7 +25,7 @@ def run():
                 img = PILImage.open(path + image_name)
                 width, height = img.size
                 print(width,height,type(image_name))
-                request_categories = [CATEGORY_TO_LABEL, 'particle']
+                request_categories = [CATEGORY_TO_LABEL]
                 category_list = [CategoryType.objects.get_or_create(category_name=category)[0] for category in request_categories]
                 print(category_list)
                 dbImage = Im(name=image_name, path='/static/' + path_basename, description=description,source=sourceType, width=width, height=height)
