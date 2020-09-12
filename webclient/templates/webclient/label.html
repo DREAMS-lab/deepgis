@@ -18,6 +18,7 @@
 	<script type="text/javascript' src='/static/scripts/jQuery/jquery-3.0.0.min.js"></script>
 	<!--<link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css"> -->
 	<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-mousewheel/3.1.13/jquery.mousewheel.min.js"></script>
 
 	<script type="text/paperscript" canvas="canvas">
 	var startPoint;
@@ -27,7 +28,7 @@
 	// var labelsDrawn = 0; //Whether a label has been drawn on this image
 	var prevLabels = 0;
 	var chosenTool = 'circle'; //set default annotation tool to circle
-
+    var PAN_STEP=100
 	window.globals = {};
 	category_groups = {};
 	category_shapes = {};
@@ -38,7 +39,7 @@
 				name: categories[i],
 				strokeColor: colors[i],
 				fillColor: colors[i],
-				strokeWidth: 2,
+				strokeWidth: 0,
 				opacity: 0.5,
 				visible: true
 			});
@@ -51,6 +52,7 @@
 	globals.labelsDrawn = 0;
 	globals.aboveExistingLabel = false;
 	globals.dragged = false;
+	globals.locationData = {};
 
 	function convertDecimalToDegree(data)
 	{
@@ -108,7 +110,7 @@
 
 			if(scaleX == scaleY)
 			{
-				scaleContent = scaleX + " m/px"
+				scaleContent = scaleX + " mm/px"
 			}
 			else {
 				scaleContent = "x: " + scaleX + " m/px, y: "+ scaleY+" m/px";
@@ -189,6 +191,9 @@
 			for (i = 0, rectangles = svg.getElementsByTagName('rectangle'); i < rectangles.length; i++) {
 				rectangles[i].setAttribute('transform', 'translate(' + (x) + ',' + (y) + ')');
 			}
+			for (i = 0, bezier = svg.getElementsByTagName('path'); i < bezier.length; i++) {
+				bezier[i].setAttribute('transform', 'translate(' + (x) + ',' + (y) + ')');
+			}
 			var orig_img = svg.getElementsByTagName('image')[0];
 			orig_img.setAttribute('x', '0');
 			orig_img.setAttribute('y', '0');
@@ -260,7 +265,7 @@
 				? segment.point
 				: segment.point + segment[type];
 				var distance = (point - segmentPoint).length;
-				if (distance < 10) {
+				if (distance < 2) {
 					return {
 						type: type,
 						segment: segment
@@ -274,7 +279,7 @@
 	var currentSegment, mode, type;
 	function onMouseDown(event) {
 		//for all shape annotation tools
-		if(chosenTool!=='bezier')
+		if(chosenTool !== 'bezier')
 		{
 			if (!globals.aboveExistingLabel) { //Create new label
 				startPoint = event.point;
@@ -375,124 +380,171 @@
 		if( e.which === 90 && (event.ctrlKey || event.metaKey)){
 			onDelete();
 		}
+
+	});
+
+	var ZOOM_FACTOR = 1.05;
+	var initialCenter = view.center;
+
+	// On mouse scroll...
+	$('canvas').mousewheel(function(event) {
+		// Store previous view state.
+		if(event.shiftKey){
+			var oldZoom = view.zoom;
+			var oldCenter = view.center;
+
+			// Get mouse position.
+			// It needs to be converted into project coordinates system.
+			var mousePosition = view.viewToProject(new Point(event.offsetX, event.offsetY));
+
+			// Update view zoom.
+			var newZoom = event.deltaY > 0 ?
+			  oldZoom * ZOOM_FACTOR :
+			  oldZoom / ZOOM_FACTOR;
+			view.zoom = newZoom;
+
+			// Update view position.
+			view.center += (mousePosition - oldCenter) * (1 - (oldZoom / newZoom));
+
+		}
+	});
+
+	$('#resetCanvasZoom').click(function() {
+		view.zoom = 1;
+	});
+
+	var $window = $(window), previousScrollTop = 0, scrollLock = false;
+
+	$window.scroll(function(event) {
+	    if ($('#canvas').is(':hover')) {
+			$window.scrollTop(previousScrollTop);
+		}
+		previousScrollTop = $window.scrollTop();
 	});
 
 	function onMouseDrag(event) {
 		var category = $('input[name=category_select]:checked', '#categories').val();
 		var shape = category_shapes[category];
 		var radius = 0;
-
-		//handle bezier annotation tool drag event here
-		if(chosenTool==='bezier')
+		if(!event.event.shiftKey)
 		{
-			if (mode == 'move' && type == 'point')
-			{
-				currentSegment.point = event.point;
-			}
-			else if (mode != 'close')
-			{
-				var delta = event.delta.clone();
-				if (type == 'handleOut' || mode == 'add')
-				delta = -delta;
-				currentSegment.handleIn += delta;
-				currentSegment.handleOut -= delta;
-			}
-		}
-		//handle shape tools drag events here
-		else
-		{
-			if (isActive) {
-				var center = (startPoint + event.point) / 2;
-				if (!globals.dragged) {
-					// changing this to reflect local radio button choice than database option
-					// if(shape == "Circle"){
-					//     window.circlePath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
-					// }
-					// else
-					// {
-					// 	//replacing rectangle logic with ellipse logic
-					// 	// window.circlePath = new Path.Rectangle(startPoint, event.point);
-					// 	window.circlePath = new Path.Ellipse(startPoint, event.point);
-					// }
-					//adding a switch case to account for possible other annotation tool options
-					switch (chosenTool) {
-						case 'circle':
-							window.circlePath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
-							break;
-						case 'ellipse':
-							window.circlePath = new Path.Ellipse(startPoint, event.point);
-							break;
-						default:
-							window.circlePath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
-					}
 
-					globals.dragged = true;
-					globals.labelsDrawn += 1;
-					category_groups[category].addChild(window.circlePath);
-					window.circlePath.style = category_groups[category].style;
-					window.circlePath.opacity = 1;
-				}
-				//changing this to reflect local radio button choice than database option
-				// if(shape == "Circle"){
-				//     newPath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
-				// }
-				// else
-				// {
-				//  	  // newPath = new Path.Rectangle(startPoint, event.point);
-				// 		newPath = new Path.Ellipse(startPoint, event.point);
-				// }
-				//
-				//adding a switch case to account for possible other annotation tool options
-				switch (chosenTool) {
-					case 'circle':
-						newPath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
-						var diameter = startPoint.getDistance(event.point);
-						break;
-					case 'ellipse':
-						newPath = new Path.Ellipse(startPoint, event.point);
-						//calculate length of longer axis.
-						var dist1 = Math.abs(startPoint.x - event.point.x);
-						var dist2 = Math.abs(startPoint.y - event.point.y);
-						var diameter = Math.max(dist1, dist2);
-						break;
-					default:
-						newPath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
-				}
+            //handle bezier annotation tool drag event here
+            if(chosenTool==='bezier')
+            {
+                if (mode == 'move' && type == 'point')
+                {
+                    currentSegment.point = event.point;
+                }
+                else if (mode != 'close')
+                {
+                    var delta = event.delta.clone();
+                    if (type == 'handleOut' || mode == 'add')
+                    delta = -delta;
+                    currentSegment.handleIn += delta;
+                    currentSegment.handleOut -= delta;
+                }
+            }
+            //handle shape tools drag events here
+            else
+            {
+                if (isActive) {
+                    var center = (startPoint + event.point) / 2;
+                    if (!globals.dragged) {
+                        // changing this to reflect local radio button choice than database option
+                        // if(shape == "Circle"){
+                        //     window.circlePath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
+                        // }
+                        // else
+                        // {
+                        // 	//replacing rectangle logic with ellipse logic
+                        // 	// window.circlePath = new Path.Rectangle(startPoint, event.point);
+                        // 	window.circlePath = new Path.Ellipse(startPoint, event.point);
+                        // }
+                        //adding a switch case to account for possible other annotation tool options
+                        switch (chosenTool) {
+                            case 'circle':
+                                window.circlePath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
+                                break;
+                            case 'ellipse':
+                                window.circlePath = new Path.Ellipse(startPoint, event.point);
+                                break;
+                            default:
+                                window.circlePath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
+                        }
 
-				setCraterDiv(diameter);
+                        globals.dragged = true;
+                        globals.labelsDrawn += 1;
+                        category_groups[category].addChild(window.circlePath);
+                        window.circlePath.style = category_groups[category].style;
+                        window.circlePath.opacity = 1;
+                    }
+                    //changing this to reflect local radio button choice than database option
+                    // if(shape == "Circle"){
+                    //     newPath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
+                    // }
+                    // else
+                    // {
+                    //  	  // newPath = new Path.Rectangle(startPoint, event.point);
+                    // 		newPath = new Path.Ellipse(startPoint, event.point);
+                    // }
+                    //
+                    //adding a switch case to account for possible other annotation tool options
+                    switch (chosenTool) {
+                        case 'circle':
 
-				category_groups[category].addChild(newPath);
-				newPath.style = category_groups[category].style;
-				newPath.opacity = 1;
+                            newPath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
+                            var diameter = startPoint.getDistance(event.point);
+                            break;
+                        case 'ellipse':
+                            newPath = new Path.Ellipse(startPoint, event.point);
+                            //calculate length of longer axis.
+                            var dist1 = Math.abs(startPoint.x - event.point.x);
+                            var dist2 = Math.abs(startPoint.y - event.point.y);
+                            var diameter = Math.max(dist1, dist2);
+                            break;
+                        default:
+                            newPath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
+                    }
 
-				newPath.onMouseEnter = function(event) {
-					if (!isActive) {
-						globals.aboveExistingLabel = true;
-						this.opacity = 1;
-						window.circlePath = this;
-					}
-				};
-				newPath.onMouseLeave = function(event) {
-					globals.aboveExistingLabel = false;
-					this.style = category_groups[category].style;
-					this.opacity = category_groups[category].opacity;
-				};
-				newPath.onDoubleClick = function(event) {
-					isActive = false;
-					globals.aboveExistingLabel = false;
-					this.remove();
-					globals.labelsDrawn -= 1;
-				};
-				window.circlePath.remove();
-				window.circlePath = newPath;
+                    setCraterDiv(diameter);
 
-			} else {
-				window.circlePath.position += event.point - dragStartPoint;
-				dragStartPoint = event.point;
+                    category_groups[category].addChild(newPath);
+                    newPath.style = category_groups[category].style;
+                    newPath.opacity = 1;
 
-			}
+                    newPath.onMouseEnter = function(event) {
+                        if (!isActive) {
+                            globals.aboveExistingLabel = true;
+                            this.opacity = 1;
+                            window.circlePath = this;
+                        }
+                    };
+                    newPath.onMouseLeave = function(event) {
+                        globals.aboveExistingLabel = false;
+                        this.style = category_groups[category].style;
+                        this.opacity = category_groups[category].opacity;
+                    };
+                    newPath.onDoubleClick = function(event) {
+                        isActive = false;
+                        globals.aboveExistingLabel = false;
+                        this.remove();
+                        globals.labelsDrawn -= 1;
+                    };
+                    window.circlePath.remove();
+                    window.circlePath = newPath;
+
+                } else {
+                    window.circlePath.position += event.point - dragStartPoint;
+                    dragStartPoint = event.point;
+
+                }
+            }
+		} else{
+			paper.view.center = event.downPoint.subtract(event.point).add(paper.view.center);
 		}
 	}
+
 	function onMouseUp(event) {
 		if(chosenTool!=='bezier')
 		{
@@ -512,6 +564,8 @@
 	imageY = 0;
 	imageWidth = 0;
 	imageHeight = 0;
+	ZOOM_STEP_SIZE =1;
+	PAN_STEP = 1;
 	var currentImage = {};
 
 	// function to set value of location data to global variable
@@ -523,6 +577,30 @@
 		setScaleDiv();
 	}
 
+
+
+	function zoomIn(){
+		labelsLayer.view.zoom = labelsLayer.view.zoom + ZOOM_STEP_SIZE
+	}
+
+	function zoomOut(){
+		labelsLayer.view.zoom = labelsLayer.view.zoom - ZOOM_STEP_SIZE
+	}
+
+	function panUp(){
+        labelsLayer.view.setCenter(labelsLayer.view.center.x,labelsLayer.view.center.y - PAN_STEP);
+	}
+	function panDown(){
+        labelsLayer.view.setCenter(labelsLayer.view.center.x,labelsLayer.view.center.y + PAN_STEP);
+	}
+	function panRight(){
+        labelsLayer.view.setCenter(labelsLayer.view.center.x +PAN_STEP,labelsLayer.view.center.y);
+	}
+	function panLeft(){
+        labelsLayer.view.setCenter(labelsLayer.view.center.x-PAN_STEP,labelsLayer.view.center.y);
+	}
+
+
 	//function to set crater radius
 	function setCraterDiv(data)
 	{
@@ -530,10 +608,10 @@
 		if(craterDiameter>1000)
 		{
 			craterDiameter = craterDiameter/1000;
-			var craterDivContent = "Crater Diameter: " + craterDiameter.toFixed(2) + " km";
+			var craterDivContent = "Hypolith/Rock Diameter: " + craterDiameter.toFixed(2) + " cm";
 		}
 		else {
-			var craterDivContent = "Crater Diameter: " + craterDiameter.toFixed(2) + " m";
+			var craterDivContent = "Hypolith/Rock Diameter: " + craterDiameter.toFixed(2) + " mm";
 		}
 		$("#craterDivContent").html(craterDivContent);
 		$("#craterDiv").toggle(true);
@@ -546,10 +624,10 @@
 		scale = scale*100;
 		if(scale>1000)
 		{
-				var scaleDivContentText = Math.floor(scale/1000) + "km";
+				var scaleDivContentText = Math.floor(scale/1000) + "cm";
 		}
 		else {
-			var scaleDivContentText = Math.floor(scale) + "m";
+			var scaleDivContentText = Math.floor(scale) + "mm";
 		}
 
 		$("#scaleDivContent").html(scaleDivContentText);
@@ -599,13 +677,13 @@
 			//if there is no data show a message
 			if(data.length==0)
 			{
-				showSnackBar("No Crater Annotations were found");
+				showSnackBar("No Annotations were found");
 			}
 			else {
 				if(data.length==1)
-					showSnackBar(data.length + " Crater Annotation was added");
+					showSnackBar(data.length + " Annotation was added");
 				else
-					showSnackBar(data.length + " Crater Annotations were added");
+					showSnackBar(data.length + " Annotations were added");
 			}
 
 			var category = $('input[name=category_select]:checked', '#categories').val();
@@ -649,9 +727,9 @@
 		}
 		else {
 			if(globals.LOLAAnnotations.length==0)
-				showSnackBar("No Crater Annotations were found");
+				showSnackBar("No Annotations were found");
 			else
-				showSnackBar("LOLA Crater Annotations were already added");
+				showSnackBar("Annotations were already added");
 		}
 	}
 
@@ -700,6 +778,7 @@
 			imageX = response.subimage.x;
 			imageY = response.subimage.y;
 			imageWidth = response.subimage.width;
+
 			imageHeight = response.subimage.height;
 			imagePadding = response.subimage.padding;
 			if (typeof padding == 'undefined') {
@@ -722,6 +801,7 @@
 			alert("Problem with width, height, or padding value");
 			return;
 		}
+
 		size = new paper.Size(width + 2 * padding, height + 2 * padding);
 		//Add new image and resize canvas to fit image
 		img = new Image();
@@ -741,12 +821,12 @@
 		} catch (err) {
 			alert("Image cannot be opened. Note that currently external URLs cannot be used. Error: " + err.message)
 		}
-
 		function setup_images() {
 			//paper.view.setViewSize(img.naturalWidth, img.naturalHeight);
 			paper.view.setViewSize(size);
 			//paper.view.getViewSize();
-			$('#canvasWrapper').css('width', size.width).css('height', size.height);
+
+			$('#canvas').css('width', size.width).css('height', size.height);
 			//$('#canvas').css('box-shadow', " -20 -20 20px" +  imagePadding + "px rgba(255,0,0,0.5)");
 			point = new paper.Point(point.x - padding, point.y - padding);
 			original_image_raster = new paper.Raster(img);
@@ -757,6 +837,7 @@
 			raster.sendToBack();
 			original_image_raster.visible = false;
 			raster.id = "shifted image";
+			paper.view.zoom =1;
 			paper.view.update();
 
 		}
@@ -877,6 +958,7 @@
 					<li class="grid">
 						<input type="radio" id="bezier_rb" name="tool_select" value="bezier">
 						<label for="bezier_rb">
+						<label for="bezier_rb">
 							Bezier
 						</label>
 					</li>
@@ -924,7 +1006,7 @@
 				class="btn btn-success btn-sm" onclick="drawLOLAAnnotations()"
 				title="Get annotations from the database">
 				<i class="fa fa-tags"></i>
-				Get Crater Annotations
+				Get Annotations
 			</button>
 		</ul>
 	</div>
@@ -952,10 +1034,14 @@
 			<p> <h3>Instructions</h3>
 				<ul class="list-group">
 					<li class="list-group-item">
-						Encircle occluded craters <i>entirely</i>, use your best guess!. <br/>
+						Encircle occluded hypoliths/rocks <i>entirely</i>, use your best guess!. <br/>
 						Click and drag to select region. <br/>
-						Undo button or Ctrl+z/Cmd+z removes previously added point.<br/>
-						Double click to delete an area.</li>
+						Undo button or Ctrl+z/Cmd+z removes previously added Bezier point.<br/>
+						Double click to delete an area.<br/>
+						Use shift + mouse scroll to zoom inside the image. <br/>
+						Use shift + mouse drag to move the image. <br/>
+						Click <a href="javascript:void(0)" id="resetCanvasZoom">Reset</a> to default zoom.
+ 						</li>
 					</ul>
 				</p>
 			</div>
@@ -966,7 +1052,7 @@
 					<div id="canvasDiv">
 						<!--<canvas id="canvas" resize></canvas> -->
 						<div id="canvasWrapper">
-							<canvas id="canvas" width="1000" height="1000"></canvas>
+							<canvas id="canvas" width="1000" height="1000" ></canvas>
 						</div>
 						<div class="footer">
 							<div class="scaleDiv" id="scaleDiv">
@@ -990,14 +1076,14 @@
 					</div>
 
 					<div>
-						<p>To report a bug, go to the github page <a href="https://github.com/dreams-lab/deepgis/issues" target="_blank">here</a> and open a new issue</p>
+						<p>To report bugs, go to the github page <a href="https://github.com/dreams-lab/deepgis/issues" target="_blank">here</a> and open a new issue</p>
 					</div>
 				</td>
 
 			</tr>
 		</table>
 		<!-- <a href="#menu-toggle" class="btn btn-secondary" id="menu-toggle">Toggle Menu</a> -->
-		<a href="/logout" class="btn btn-danger logoutBtn"><i class="fa fa-sign-out"></i>Logout </a>
+<a href="/logout" class="btn btn-danger logoutBtn"><i class="fa fa-sign-out"></i>Logout </a>
 		<div id="snackbar"></div>
 	</div>
 </div>
@@ -1065,7 +1151,7 @@ function updateCategoryProperties() {
 							name: category,
 							strokeColor: response[category]['color'],
 							fillColor: response[category]['color'],
-							strokeWidth: 2,
+							strokeWidth: 0,
 							opacity: 0.5,
 							visible: true
 						});
@@ -1083,3 +1169,4 @@ function updateCategoryProperties() {
 </body>
 
 </html>
+
