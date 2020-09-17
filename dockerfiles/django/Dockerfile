@@ -23,7 +23,7 @@ RUN pip install --upgrade pip
 RUN pip3 install --upgrade pip
 
 RUN pip3 install django-adminplus
-RUN pip3 install django-extensions
+RUN pip3 install django-extensions==3.0.2
 RUN pip3 install requests
 RUN pip3 install matplotlib
 RUN pip3 install descartes

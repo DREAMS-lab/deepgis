@@ -1,3 +1,5 @@
 CREATE DATABASE "agdss";
 CREATE USER aguser WITH PASSWORD 'aguser';
 GRANT ALL PRIVILEGES ON DATABASE "agdss" to aguser;
+\c agdss
+CREATE EXTENSION postgis;
