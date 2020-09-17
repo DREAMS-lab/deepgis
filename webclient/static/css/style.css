@@ -23,17 +23,13 @@ button #next {
 div #canvasDiv {
   font-size:13pt;
   font-family:'Roboto', sans-serif;
-  width: 1000px;
-  height: 1000px;
 }
 
 div #canvasWrapper {
  /* border: 20px inset rgba(0,0,0, 0.5);*/
 }
 
-#canvas {
-    border: 3px solid black;
-}
+
 div #imageControlContainer {
   padding-top: 75%;
 }

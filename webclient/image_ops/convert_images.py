@@ -13,6 +13,9 @@ from webclient.image_ops import crop_images
 import numpy as np
 import imageio
 from cairosvg import svg2png
+import shutil
+import string
+import random
 
 IMAGE_FILE_EXTENSION = '.png'
 
@@ -127,6 +130,7 @@ def render_SVG_from_label(label):
     if isinstance(label, ImageLabel):
         svg = label.combined_labelShapes
         svg_file = image_label_to_SVG_String_file(label)
+        print(svg_file)
         #convert svg string to png using cairo
         svg2png(bytestring=svg_file, write_to="output.png")
         try:
@@ -197,7 +201,11 @@ def image_label_string_to_SVG_string(DBStr, height=None, width=None, keepImage=F
     imageString = ""
     if keepImage:
         imagePath = re.search('ns1:href="(.*)png"', DBStr)
-        imagePath = imagePath.group(1)+"png"
+        try:
+            imagePath = imagePath.group(1)+"png"
+        except AttributeError as e:
+            imagePath = re.search('a0:href="(.*)png"', DBStr)
+            imagePath = imagePath.group(1) + "png"
         imageString = '<defs><pattern id="backgroundImage" ' \
         'patternUnits="userSpaceOnUse" width="%s" height="%s">' \
         '<image xlink:href="%s" x="0" y="0" width="%s" height="%s"/>' \
@@ -214,23 +222,87 @@ def image_label_string_to_SVG_string(DBStr, height=None, width=None, keepImage=F
            ' width="%s">%s\n%s</svg>\n' % (height, width, imageString, addedStr)
 
 
-def image_labels_to_countable_npy():
-    _user = User.objects.filter(username='Labeler1')[0]
+def count_total_objects():
+    _user = User.objects.filter(username='ejduncan')[0]
     _labeler = Labeler.objects.filter(user=_user)[0]
     labels = ImageLabel.objects.filter(labeler=_labeler)
     foldername = 'npy'
-
+    ctr_total=0
     for label in labels:
         parent_image = label.parentImage
-        filename = '%s' % parent_image.name.replace('.JPG','')
-        outputFilenameNpy = (settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + '.npy')
+        filename = '%s' % parent_image.name
         categorylabels = label.categorylabel_set.all()
         height = parent_image.height
         width = parent_image.width
+        time_taken = int(label.timeTaken)
+        min=(time_taken/1000.0)/60.0
+
+        for cat_id, categorylabel in enumerate(categorylabels):
+            svg = categorylabel.labelShapes
+            paths = re.findall(SVGRegex.rePath, svg)
+            poly = re.findall(SVGRegex.rePolygon, svg)
+            circles = re.findall(SVGRegex.reCircle, svg)
+            total = len(paths) + len(poly) + len(circles)
+            ctr_total += total
+            print("filename=%s, category_enum=%d,paths=%d, polygon=%d, circles=%d, count=%d, time_taken=%dmin, cumulative count=%d" % (filename, cat_id,len(paths), len(poly), len(circles), total, min, ctr_total))
+
+
+def get_random_string(length=16):
+    # Random string with the combination of lower and upper case
+    letters = string.ascii_letters
+    result_str = ''.join(random.choice(letters) for i in range(length))
+    return str(result_str)
+
+def image_labels_to_countable_npy_with_labels(user_name, labels):
+    _user = User.objects.filter(username=user_name)[0]
+    user = str(_user.username)
+    foldername = 'labels'
+
+    ## Delete all previous contents
+    if os.path.exists(settings.MEDIA_ROOT + settings.LABEL_FOLDER_NAME + user):
+        shutil.rmtree(settings.MEDIA_ROOT + settings.LABEL_FOLDER_NAME + user)
+    base_folder = settings.MEDIA_ROOT + settings.LABEL_FOLDER_NAME + user + '/' + get_random_string() + '/dataset/'
+
+    for label in labels:
+        parent_image = label.parentImage
+        filename = '%s' % parent_image.name.replace('.JPG', '')
+        filename = '%s' % filename.replace('.PNG', '')
+        filename = '%s' % filename.replace('.jpg', '')
+        filename = '%s' % filename.replace('.png', '')
+
+        categorylabels = label.categorylabel_set.all()
+        height = label.imageWindow.height
+        width = label.imageWindow.width
+        padding_x = label.imageWindow.x
+        padding_y = label.imageWindow.y
         total_paths = 300
         masks_ndarray = np.zeros((total_paths, height, width), dtype=np.int8)
         ctr = 0
-        
+        outputFilenameNpy = (
+                   base_folder + foldername + '/' + filename + '_' + str(
+                padding_x) + '_' + str(padding_y) + '.npy')
+
+        # create cropped images
+        imagePath = re.search('ns1:href="(.*)png"', label.combined_labelShapes)
+        try:
+            imagePath = imagePath.group(1)+"png"
+        except AttributeError as e:
+            imagePath = re.search('a0:href="(.*)png"', label.combined_labelShapes)
+            imagePath = imagePath.group(1) + "png"
+
+        imagePath = settings.STATIC_ROOT + imagePath[imagePath.find("static/")+7:]
+        im = PILImage.open(imagePath)
+        crop_dimensions = (padding_x, padding_y, padding_x + width, padding_y + height)
+        im_crop = im.crop(crop_dimensions)
+
+        if not os.path.exists(base_folder + "images"):
+            os.makedirs(base_folder + "images")
+        outputImageFilename = base_folder + "images/" + \
+                              filename + '_' + str(padding_x) + '_' + str(padding_y) + IMAGE_FILE_EXTENSION
+
+        im_crop.save(outputImageFilename, quality=95)
+
+        # Create masks
         for cat_id, categorylabel in enumerate(categorylabels):
             svg = categorylabel.labelShapes
             paths = []
@@ -240,35 +312,147 @@ def image_labels_to_countable_npy():
             poly = re.findall(SVGRegex.rePolygon, svg)
             circles = re.findall(SVGRegex.reCircle, svg)
             shapes = paths + poly + circles
-            if len(paths) + len(poly) +len(circles) > 0:
+            if len(paths) + len(poly) + len(circles) > 0:
                 for idx,path in enumerate(shapes):
-                    print("logging image info:----",filename, ctr, cat_id, idx, path)
-                    img=WandImage(blob=image_string_to_SVG_string_file(image_label_string_to_SVG_string(path, height, width)))
-                    img.resize(width,height)
+                    print("logging image info:----", filename, ctr, cat_id, idx, path)
+                    img=WandImage(blob=image_string_to_SVG_string_file(image_label_string_to_SVG_string(path,
+                                                                                                        height,
+                                                                                                        width)))
+                    img.resize(width, height)
                     img.background_color = WandColor('white')
                     img.alpha_channel = 'remove'
                     img.negate()
                     img.threshold(0)
                     img.format = 'png'
-                    if not os.path.exists(settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername):
-                        os.makedirs(settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername)
+                    if not os.path.exists(base_folder + foldername):
+                        os.makedirs(base_folder + foldername)
                     outputFilename = (
-                            settings.STATIC_ROOT + settings.LABEL_FOLDER_NAME + foldername + '/' + filename + '_' + str(idx) + '_' + str(ctr) + IMAGE_FILE_EXTENSION)
+                            base_folder + foldername + '/' + filename + '_' + str(padding_x) + '_' + str(padding_y) + '_' +
+                            str(padding_x) + '_' + str(padding_y) + '_' + str(idx) + '_' + str(ctr) + IMAGE_FILE_EXTENSION)
                     img.save(filename=outputFilename)
                     im = imageio.imread(outputFilename)
                     masks = np.array(im)
                     category_id = categorylabel.categoryType_id
-                    cat_mask = np.where(masks == 255,category_id , masks)
+                    cat_mask = np.where(masks == 255, category_id , masks)
                     masks_ndarray[ctr, :, :] = cat_mask
                     ctr = ctr + 1
             else:
                 print(filename, ctr, cat_id, 0, 'EMPTY')
         masks_ndarray.resize(ctr, height, width)
-        print(masks_ndarray.shape)
-        np.save(outputFilenameNpy,masks_ndarray)
+        np.save(outputFilenameNpy, masks_ndarray)
+
+        for rmfile in os.listdir(base_folder + foldername):
+            if rmfile.endswith('.png'):
+                os.remove(base_folder + foldername + '/' + rmfile)
+    base_folder_without_dataset = base_folder[:-8]
+
+    # create a zip file of the dataset
+    shutil.make_archive(base_folder_without_dataset + 'dataset', 'zip', base_folder)
+    # delete the folder with images and labels
+    shutil.rmtree(base_folder)
+    return base_folder_without_dataset + 'dataset.zip'
 
 
+def image_labels_to_countable_npy(user_name):
+    _user = User.objects.filter(username=user_name)[0]
+    user = str(_user.username)
+    _labeler = Labeler.objects.filter(user=_user)[0]
+    labels = ImageLabel.objects.filter(labeler=_labeler)
+    foldername = 'labels'
 
+    ## Delete all previous contents
+    if os.path.exists(settings.MEDIA_ROOT + settings.LABEL_FOLDER_NAME + user):
+        shutil.rmtree(settings.MEDIA_ROOT + settings.LABEL_FOLDER_NAME + user)
+    base_folder = settings.MEDIA_ROOT + settings.LABEL_FOLDER_NAME + user + '/' + get_random_string() + '/dataset/'
+
+    for label in labels:
+        parent_image = label.parentImage
+        filename = '%s' % parent_image.name.replace('.JPG', '')
+        filename = '%s' % filename.replace('.PNG', '')
+        filename = '%s' % filename.replace('.jpg', '')
+        filename = '%s' % filename.replace('.png', '')
+
+        categorylabels = label.categorylabel_set.all()
+        height = label.imageWindow.height
+        width = label.imageWindow.width
+        padding_x = label.imageWindow.x
+        padding_y = label.imageWindow.y
+        total_paths = 300
+        masks_ndarray = np.zeros((total_paths, height, width), dtype=np.int8)
+        ctr = 0
+        outputFilenameNpy = (
+                   base_folder + foldername + '/' + filename + '_' + str(
+                padding_x) + '_' + str(padding_y) + '.npy')
+
+        # create cropped images
+        imagePath = re.search('ns1:href="(.*)png"', label.combined_labelShapes)
+        try:
+            imagePath = imagePath.group(1)+"png"
+        except AttributeError as e:
+            imagePath = re.search('a0:href="(.*)png"', label.combined_labelShapes)
+            imagePath = imagePath.group(1) + "png"
+
+        imagePath = settings.STATIC_ROOT + imagePath[imagePath.find("static/")+7:]
+        im = PILImage.open(imagePath)
+        crop_dimensions = (padding_x, padding_y, padding_x + width, padding_y + height)
+        im_crop = im.crop(crop_dimensions)
+
+        if not os.path.exists(base_folder + "images"):
+            os.makedirs(base_folder + "images")
+        outputImageFilename = base_folder + "images/" + \
+                              filename + '_' + str(padding_x) + '_' + str(padding_y) + IMAGE_FILE_EXTENSION
+
+        im_crop.save(outputImageFilename, quality=95)
+
+        # Create masks
+        for cat_id, categorylabel in enumerate(categorylabels):
+            svg = categorylabel.labelShapes
+            paths = []
+            poly = []
+            print(filename, svg)
+            paths = re.findall(SVGRegex.rePath, svg)
+            poly = re.findall(SVGRegex.rePolygon, svg)
+            circles = re.findall(SVGRegex.reCircle, svg)
+            shapes = paths + poly + circles
+            if len(paths) + len(poly) + len(circles) > 0:
+                for idx,path in enumerate(shapes):
+                    print("logging image info:----", filename, ctr, cat_id, idx, path)
+                    img=WandImage(blob=image_string_to_SVG_string_file(image_label_string_to_SVG_string(path,
+                                                                                                        height,
+                                                                                                        width)))
+                    img.resize(width, height)
+                    img.background_color = WandColor('white')
+                    img.alpha_channel = 'remove'
+                    img.negate()
+                    img.threshold(0)
+                    img.format = 'png'
+                    if not os.path.exists(base_folder + foldername):
+                        os.makedirs(base_folder + foldername)
+                    outputFilename = (
+                            base_folder + foldername + '/' + filename + '_' + str(padding_x) + '_' + str(padding_y) + '_' +
+                            str(padding_x) + '_' + str(padding_y) + '_' + str(idx) + '_' + str(ctr) + IMAGE_FILE_EXTENSION)
+                    img.save(filename=outputFilename)
+                    im = imageio.imread(outputFilename)
+                    masks = np.array(im)
+                    category_id = categorylabel.categoryType_id
+                    cat_mask = np.where(masks == 255, category_id , masks)
+                    masks_ndarray[ctr, :, :] = cat_mask
+                    ctr = ctr + 1
+            else:
+                print(filename, ctr, cat_id, 0, 'EMPTY')
+        masks_ndarray.resize(ctr, height, width)
+        np.save(outputFilenameNpy, masks_ndarray)
+
+        for rmfile in os.listdir(base_folder + foldername):
+            if rmfile.endswith('.png'):
+                os.remove(base_folder + foldername + '/' + rmfile)
+    base_folder_without_dataset = base_folder[:-8]
+
+    # create a zip file of the dataset
+    shutil.make_archive(base_folder_without_dataset + 'dataset', 'zip', base_folder)
+    # delete the folder with images and labels
+    shutil.rmtree(base_folder)
+    return base_folder_without_dataset + 'dataset.zip'
 
 def category_label_string_to_SVG_string(category_label, keepImage=False):
     addedStr = category_label.labelShapes

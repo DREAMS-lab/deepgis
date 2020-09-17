@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'q82m6os5(_m4s7tabkfsz1y90dsnz1q(_c^+u&zs+ffftgs*2$'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -138,3 +138,6 @@ STATICFILES_DIRS = (
 '/home/deepgis/deepgis_moon/',
 )
 
+
+MEDIA_ROOT = '/app/media-root/'
+MEDIA_URL = '/media/'

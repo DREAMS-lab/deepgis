@@ -53,7 +53,7 @@
 	globals.aboveExistingLabel = false;
 	globals.dragged = false;
 	globals.locationData = {};
-
+	$("#scaleDiv").hide();
 	function convertDecimalToDegree(data)
 	{
 		//adding logic for sign
@@ -576,9 +576,131 @@
 		getLOLACraterAnnotations();
 		setScaleDiv();
 	}
+	function startAnnotations() {
+		$('#debug').show();
+		$('#controls').show();
+		$('#displayTable').show();
+		$('#undo').show();
+		$('#applyLabels').show();
+		$('#getLOLACraterAnnotationsButton').show();
+		$('#createMasks').show();
+		$('#noLabelsList').show();
+		$('#generateDataset').hide();
+		$('#googleColab').hide();
+		$('#user_annotations').hide();
+		$('#continueAnnotations').hide();
+		$('#generateDatasetPath').hide()
+	}
 
 
+	function startMaskRCNN() {
+			$('#debug').hide();
+			$('#controls').hide();
+			$('#displayTable').hide();
+			$('#undo').hide();
+			$('#applyLabels').hide();
+			$('#getLOLACraterAnnotationsButton').hide();
+			$('#createMasks').hide();
+			$('#noLabelsList').hide();
+			$('#generateDataset').show();
+			$('#googleColab').show();
+			$('#user_annotations').show();
+			$('#continueAnnotations').show();
+			$('#generateDatasetPath').show()
 
+			$.ajax({
+				url: "/webclient/displayAnnotations",
+				type: "GET",
+				dataType: "json",
+				data: {},
+				success: function(response) {
+					if (response.status == "success") {
+						$("#annotation_grid_body").empty();
+						var content = response.message;
+						for (const property in content) {
+							$("#annotation_grid_body").append(`<tr data-row-id="${property}">
+							<td><input type="checkbox" id="${property}_input" class="sub_chk" data-id="${property}"></td>
+							<td id="${property}_parent_image">${content[property]["parent_image"]}</td>
+							<td id="${property}_width">${content[property]["width"]}</td>
+							<td id="${property}_height">${content[property]["height"]}</td>
+							<td id="${property}_padding_x">${content[property]["padding_x"]}</td>
+							<td id="${property}_padding_y">${content[property]["padding_y"]}</td>
+							<td id="${property}_timetaken">${content[property]["timetaken"]}</td>
+							</tr>`)
+						}
+					} else {
+						alert(response.message);
+						$('#debug').show();
+						$('#controls').show();
+						$('#displayTable').show();
+						$('#undo').show();
+						$('#applyLabels').show();
+						$('#getLOLACraterAnnotationsButton').show();
+						$('#createMasks').show();
+						$('#noLabelsList').show();
+						$('#generateDataset').hide();
+						$('#googleColab').hide();
+						$('#user_annotations').hide();
+						$('#continueAnnotations').hide();
+						$('#generateDatasetPath').hide()
+					}
+				},
+				error: function(xhr, errmsg, err) {
+					console.log("Access to annotations failed");
+					$('#debug').show();
+					$('#controls').show();
+					$('#displayTable').show();
+					$('#undo').show();
+					$('#applyLabels').show();
+					$('#getLOLACraterAnnotationsButton').show();
+					$('#createMasks').show();
+					$('#noLabelsList').show();
+					$('#generateDataset').hide();
+					$('#googleColab').hide();
+					$('#user_annotations').hide();
+					$('#continueAnnotations').hide();
+					$('#generateDatasetPath').hide()
+				}
+			});
+	};
+
+	function generateDataset() {
+		$("#generateDatasetSpinner").show();
+		$("#generateDatasetPath").empty();
+		var selected = [];
+		$('#annotation_grid_body > tr').each(function(index, tr) {
+			index = index + 1;
+			if($("#" + index.toString() + "_input").prop("checked") == true) {
+				selected.push({ parent_image: $("#" + index.toString() + "_parent_image").text(),
+				 				width: $("#" + index.toString() + "_width").text(),
+				 				height: $("#" + index.toString() + "_height").text(),
+				 				padding_x: $("#" + index.toString() + "_padding_x").text(),
+				 				padding_y: $("#" + index.toString() + "_padding_y").text(),
+				 				timetaken: $("#" + index.toString() + "_timetaken").text(),
+				 				})
+			}
+		});
+		var location = document.location.origin;
+		console.log(location);
+		$.ajax({
+			url: "/webclient/createMasks",
+			type: "POST",
+			dataType: "json",
+			data: JSON.stringify({"labels" : selected}),
+			success: function(response) {
+				if (response.status == "success") {
+					var link = response.message;
+					link = link.replace("/app", location);
+					$("#generateDatasetSpinner").hide();
+					$("#generateDatasetPath").empty();
+					$('#generateDatasetPath').text(link);
+				} else {
+					console.log("Generate dataset failed!");
+					console.log(response.message);
+				}
+			}
+		});
+	}
 	function zoomIn(){
 		labelsLayer.view.zoom = labelsLayer.view.zoom + ZOOM_STEP_SIZE
 	}
@@ -661,7 +783,6 @@
 	{
 		var y = Math.abs(996*(lat - globals.locationData.UpperLeft.Latitude)/(globals.locationData.LowerRight.Latitude - globals.locationData.UpperLeft.Latitude));
 		var x = Math.abs(996*(lon - globals.locationData.UpperLeft.Longitude)/(globals.locationData.LowerRight.Longitude - globals.locationData.UpperLeft.Longitude));
-
 		return new paper.Point(x,y);
 	}
 
@@ -827,8 +948,7 @@
 			//paper.view.getViewSize();
 
 			$('#canvas').css('width', size.width).css('height', size.height);
-			//$('#canvas').css('box-shadow', " -20 -20 20px" +  imagePadding + "px rgba(255,0,0,0.5)");
-			point = new paper.Point(point.x - padding, point.y - padding);
+			point = new paper.Point(point.x, point.y);
 			original_image_raster = new paper.Raster(img);
 			original_image_raster.id = "original image";
 			raster = original_image_raster.getSubRaster(new paper.Rectangle(point, size));
@@ -876,8 +996,8 @@
 		$('#image_info_name').html("Image: " + image_path + image_name);
 		// $('#image_info_path').html("Image path: " + image_path);
 		globals.create_groups_shapes(categories, colors, shapes);
-	}
 
+	}
 	//TODO: Make work for both JSON string and JSON object
 	function displayLabels(labels) {
 		//window.labelsLayer.importJSON(JSON.parse(data));
@@ -958,14 +1078,13 @@
 					<li class="grid">
 						<input type="radio" id="bezier_rb" name="tool_select" value="bezier">
 						<label for="bezier_rb">
-						<label for="bezier_rb">
 							Bezier
 						</label>
 					</li>
 				</ul>
 
 			<li data-toggle="collapse" data-target="#image_ops" class="collapsed active">
-				<p class="bold"><i class="fa fa-adjust bold" aria-hidden="true"></i> Image  Filter<span class="arrow"></span></p>
+				<p class="bold"><i class="fa fa-adjust bold" aria-hidden="true"></i> Image Filter<span class="arrow"></span></p>
 			</li>
 			<ul class="sidebar-nav2 sub-menu collapse" id="image_ops">
 				<li>
@@ -988,8 +1107,17 @@
 				</li>
 				<button type="button" title="reset all image filters" id="resetImageControl" class="btn btn-warning btn-sm"><i class="fa fa-refresh"></i>Reset</button>
 			</ul>
-			<li>
-				<p><label><input type="checkbox" id="noLabels" /> No labels in image</label></p>
+			<li data-toggle="collapse" data-target="#deep_learning_zoo" class="collapsed active">
+				<p class="bold"><i class="fa fa-graduation-cap bold" aria-hidden="true"></i>Deep Learning Zoo<span class="arrow"></span></p>
+			</li>
+			<ul class="sidebar-nav2 sub-menu collapse" id="deep_learning_zoo">
+				<li>
+					<button id="maskRCNN" title="Mask RCNN" type="button" onclick="startMaskRCNN()" class="btn btn-outline-primary btn-sm">Mask RCNN</button>
+				</li>
+
+			</ul>
+			<li id="noLabelsList">
+				<p><label><input type="checkbox" id="noLabels" />No labels in image</label></p>
 			</li>
 			<button type="button" title="Undo previous action" id="undo" class="btn btn-danger btn-sm">
 				<i class="fa fa-undo"></i>Undo
@@ -1000,8 +1128,10 @@
 			</button>
 			<button id="createMasks" title="Creates masks required for MaskRCNN training"
 			type="button" class="btn btn-success btn-sm">
-				<i class="fa fa-send"></i>Create Masks
-			</button>
+				<i class="fa fa-send"></i>Create Masks</button>
+			<button id="continueAnnotations" title="Back to Annotations"
+			type="button" class="btn btn-success btn-sm" style="display: none;" onclick="startAnnotations()">
+				<i class="fa fa-send"></i>Continue Annotations</button>
     	<button type="button" id="getLOLACraterAnnotationsButton"
 				class="btn btn-success btn-sm" onclick="drawLOLAAnnotations()"
 				title="Get annotations from the database">
@@ -1052,7 +1182,7 @@
 					<div id="canvasDiv">
 						<!--<canvas id="canvas" resize></canvas> -->
 						<div id="canvasWrapper">
-							<canvas id="canvas" width="1000" height="1000" ></canvas>
+							<canvas id="canvas"></canvas>
 						</div>
 						<div class="footer">
 							<div class="scaleDiv" id="scaleDiv">
@@ -1085,6 +1215,38 @@
 		<!-- <a href="#menu-toggle" class="btn btn-secondary" id="menu-toggle">Toggle Menu</a> -->
 <a href="/logout" class="btn btn-danger logoutBtn"><i class="fa fa-sign-out"></i>Logout </a>
 		<div id="snackbar"></div>
+			<div id="user_annotations" style="display: none;">
+				<h3>Annotations</h3>
+				<br>
+				<br>
+				<table id="annotation_grid" class="table table-sm table-hover table-striped bootgrid-table" cellspacing="0">
+					<thead>
+						<tr>
+							<th><input type="checkbox" id="master"></th>
+							<th>File Name</th>
+							<th>Width</th>
+							<th>Height</th>
+							<th>Cropped X coordinate</th>
+							<th>Cropped Y coordinate</th>
+							<th>Time Taken</th>
+						</tr>
+					</thead>
+					<tbody id="annotation_grid_body">
+					</tbody>
+				</table>
+			</div>
+			<div>
+				<button id="generateDataset" title="generateDataset for MaskRCNN training"
+				type="button" class="btn btn-success btn-sm pull-left" style="display: none;" onclick="generateDataset()">
+					<span class="spinner-border spinner-border-sm" id="generateDatasetSpinner" role="status" aria-hidden="true" style="display: none;"></span>
+					Generate Dataset</button>
+				<br>
+				<label id="generateDatasetPath"  style="display: none;padding-left: 10px;"></label>
+
+				<a class="pull-right" style="display: none;" id="googleColab" href="https://colab.research.google.com/gist/harishanand95/afff593d0c6492b185c0002256ff6521/mask-rcnn-deepgis.ipynb">
+				  <img src="https://colab.research.google.com/assets/colab-badge.svg" style="height: 35px;" alt="Open MaskRCNN In Colab"/>
+				</a>
+			</div>
 	</div>
 </div>
 
@@ -1097,6 +1259,17 @@
 $("#menu-toggle").click(function(e) {
 	e.preventDefault();
 	$("#wrapper").toggleClass("toggled");
+});
+
+$('#master').on('click', function(e) {
+	if($(this).is(':checked',true))
+	{
+		$(".sub_chk").prop('checked', true);
+	}
+	else
+	{
+		$(".sub_chk").prop('checked',false);
+	}
 });
 $("#category_submit").click(function() {
 	$("#category_submit").attr("disabled", true);

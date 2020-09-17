@@ -33,6 +33,7 @@ urlpatterns = [
     path('applyLabels', views.applyLabels),
     path('createMasks', views.createMasks),
     path('loadLabels', views.loadLabels),
+    path('displayAnnotations', views.display_annotations),
     #added the following path to implement annotation help on label app
     url(r'^getLOLACraterAnnotations/$', views.getLOLACraterAnnotations),
     #path('fix_label_location', views.fix_label_location),
@@ -51,4 +52,4 @@ urlpatterns = [
     path('getCategoryInfo', views.get_category_info),
     path('getTiledLabelCoordinates', views.get_tiled_label_coordinates),
     path('getCombinedLabelGeojson', views.get_combined_label_geojson),
-    ]+ static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -7,8 +7,8 @@ from webclient.models import *
 import random
 
 
-NUM_WINDOW_ROWS = 1
-NUM_WINDOW_COLS = 1
+NUM_WINDOW_ROWS = 3
+NUM_WINDOW_COLS = 3
 WINDOW_PADDING = 20
 NUM_LABELS_PER_WINDOW = 3
 
@@ -39,6 +39,7 @@ def calculate_entropy_map(image, category):
 
     print(calculateEntropy(aggregrate_array))
 
+
 def calculateEntropy(arr):
     binArr = [[numpy.bincount(numpy.array(y, dtype=numpy.uint8)) for y in x] for x in arr]
     probArr = [[y.astype(float)/numpy.sum(y) for y in x] for x in binArr]
@@ -47,6 +48,7 @@ def calculateEntropy(arr):
 
 def getImageWindow(image, user, ignore_max_count=False):
     return getPaddedWindow(image, user, ignore_max_count=ignore_max_count)
+
 
 def getRandomImageWindow(image):
     retDict = {'width':300, 'height': 300}
@@ -68,13 +70,11 @@ def getGeometricImageWindow(image):
 
 
 def getPaddedWindow(image, user, ignore_max_count=False):
-
     #Crop out sidemost pixels
     windowWidth = int((image.width - (2* WINDOW_PADDING))/NUM_WINDOW_COLS)
     windowHeight = int((image.height - (2* WINDOW_PADDING))/NUM_WINDOW_ROWS)
     windowDict = {'width': windowWidth, 'height': windowHeight,
                   'padding': WINDOW_PADDING}
-
     for x in range(WINDOW_PADDING, image.width - WINDOW_PADDING,  windowWidth):
         for y in range(WINDOW_PADDING, image.height - WINDOW_PADDING, windowHeight):
             labels = image.imagelabel_set.all().filter(imageWindow__x=x, imageWindow__y=y)
