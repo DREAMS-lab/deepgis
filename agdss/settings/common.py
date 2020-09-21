@@ -137,6 +137,9 @@ STATIC_ROOT = "/app/static-root/"
 CATEGORY_TO_LABEL = 'crater'
 LABEL_FOLDER_NAME = 'labels/'
 STATICFILES_DIRS = (
-'/home/jdas/',
+'/app/webclient/static/',
 )
 
+
+MEDIA_ROOT = '/app/media-root/'
+MEDIA_URL = '/media/'

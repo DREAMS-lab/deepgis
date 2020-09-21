@@ -22,14 +22,6 @@ RUN apt-get install -y libgdal-dev gdal-bin python3-gdal libmagickwand-dev image
 RUN pip install --upgrade pip
 RUN pip3.7 install --upgrade pip
 
-RUN pip3.7 install django-adminplus
-RUN pip3.7 install django-extensions==3.0.2
-RUN pip3.7 install requests
-RUN pip3.7 install matplotlib
-RUN pip3.7 install descartes
-RUN pip3.7 install ipython
-RUN pip3.7 install scipy
-RUN pip3.7 install shapely
-RUN pip3.7 install geojson
+RUN pip3.7 install django-adminplus django-extensions==3.0.2 cairosvg requests matplotlib descartes ipython scipy shapely geojson
 RUN pip3.7 install -U https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow_cpu-2.1.0-cp37-cp37m-manylinux2010_x86_64.whl
 ENV DJANGO_SETTINGS_MODULE agdss.settings.common
