@@ -1,37 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html style="background-color: cornsilk;">
+<head>
+    <title>DeepGIS Login</title>
+</head>
 
-    <head>
-        <title>AgDSS Login</title>
-    </head>
-
-    <body background="http://openuav.ddns.net:8000/static/images/labelag-splash.jpeg" style="width:50%;">
-        {#% extends 'base.html' %#}
-
- <div id="login" style="width:300px;height:200px;font-size:15pt;font-family:Helvetica;color:white;background-color: black;opacity:0.7;
- position: absolute;text-align: left;
-    padding-left: 10px;
-    padding-top: 10px;
-
-    top: 10%;
-    bottom: 50%;
-    left: 0;
-    right: 0;
-   margin: auto;>
-
-{% block content %}
-
-  <h2 style="font-size:15pt;font-family:Helvetica;color:white;">Login</h2>
-  <form method="post">
+<body style="font-size: 15pt;font-family: Helvetica;color: black;background-color: cornsilk;text-align: center;">
+    {#% extends 'base.html' %#}
+    <div id="login" >
+    {% block content %}
+    <h2 style="font-family:Helvetica;">DeepGIS Login</h2>
+    <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit" style="font-size : 20px; height:30px; width:130px">Login</button>
+    <button type="submit" style="height:30px; width:130px">Login</button>
 
-  </form>
-{% endblock %}
+    </form>
+    {% endblock %}
 
-<a href ='/register' style="color:hotpink">Register</a>
-            </div>
+    <a href ='/register' style="color:darkgreen">Register</a>
+ </div>
     </body>
 
 </html>
