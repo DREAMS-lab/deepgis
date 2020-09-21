@@ -31,7 +31,8 @@ from django.views.decorators.http import require_POST, require_GET
 from django.core import serializers
 
 from . import helper_ops
-from .image_ops.convert_images import image_label_string_to_SVG_string, render_SVG_from_label
+from .image_ops.convert_images import image_label_string_to_SVG_string, render_SVG_from_label, \
+    image_labels_to_countable_npy, image_labels_to_countable_npy_with_labels
 from webclient.image_ops import crop_images
 from .models import Color, CategoryType, ImageSourceType, Image, Labeler, ImageWindow, ImageLabel, CategoryLabel, \
     ImageFilter, TiledLabel, TileSet, Tile
@@ -42,13 +43,8 @@ import csv
 import base64
 import numpy as np
 from .models import *
-from django.contrib.gis.geos import Polygon, MultiPolygon, GeometryCollection
-from webclient.image_ops.convert_images import convert_image_label_to_SVG, convert_category_label_to_SVG
-
+from django.contrib.gis.geos import Polygon, MultiPolygon
 import csv
-
-logger = logging.getLogger(__name__)
-
 
 ######
 # PAGES
@@ -103,6 +99,73 @@ def map_label(request):
     return HttpResponse(template.render(context, request))
 
 
+@login_required
+@require_POST
+@csrf_exempt
+def createMasks(request):
+    try:
+        user = request.user
+        print(user)
+        if not user.is_authenticated:
+            return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+        else:
+            dict = json.load(request)
+            print(dict)
+            labels = dict['labels']
+            if (len(labels) == 0):
+                return JsonResponse({"status": "failure", "message": "No images selected"}, safe=False)
+            print(labels)
+            _user = User.objects.filter(username=user)[0]
+            print(_user)
+            _labeler = Labeler.objects.filter(user=_user)[0]
+            labels_db = []
+            for label in labels:
+                _image_window = ImageWindow.objects.filter(width=label["width"],
+                                                           height=label["height"],
+                                                           x=label["padding_x"],
+                                                           y=label["padding_y"])[0]
+                _image = Image.objects.filter(name=label["parent_image"])[0]
+                _label_db = ImageLabel.objects.filter(labeler=_labeler,
+                                                      parentImage=_image,
+                                                      timeTaken=label["timetaken"],
+                                                      imageWindow=_image_window
+                                                      )
+                if len(_label_db) == 1:
+                    labels_db.append(_label_db[0])
+
+            file_path = image_labels_to_countable_npy_with_labels(user, labels_db)
+            file_path = file_path.replace("media-root", "media")
+
+            return JsonResponse({"status": "success", "message": file_path}, safe=False)
+    except:
+        return JsonResponse({"status": "failure", "message": "Something failed"}, safe=False)
+
+
+@login_required
+def display_annotations(request):
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+
+    _user = User.objects.filter(username=user)[0]
+    _labeler = Labeler.objects.filter(user=_user)[0]
+    labels = ImageLabel.objects.filter(labeler=_labeler)
+    response = dict()
+    count = 1
+    for label in labels:
+        response[count] = dict()
+        response[count]["parent_image"] = label.parentImage.name
+        response[count]["height"] = label.imageWindow.height
+        response[count]["width"] = label.imageWindow.width
+        response[count]["padding_x"] = label.imageWindow.x
+        response[count]["padding_y"] = label.imageWindow.y
+        response[count]["timetaken"] = label.timeTaken
+        count += 1
+    output = {"status": "success"}
+    output["message"] = response
+    return JsonResponse(output, safe=False)
+
+
 ##################
 # POST/GET REQUESTS
 ##################
@@ -111,6 +174,8 @@ def applyLabels(request):
     try:
 
         dict = json.load(request)
+    #        print("-------------------=========-")
+    #        image_labels_to_countable_npy()
     except json.JSONDecodeError:
         print("Could not decode")
         return HttpResponseBadRequest("Could not decode JSON")
@@ -180,10 +245,10 @@ def applyLabels(request):
                                        labeler=labeler)
         image_filter_obj.save()
 
-        convert_image_label_to_SVG(labelObject)
-        convert_category_label_to_SVG(category_label)
-
-    convert_image_label_to_SVG(labelObject)
+        # convert_image_label_to_SVG(labelObject)
+        # convert_category_label_to_SVG(category_label)
+    #
+    # convert_image_label_to_SVG(labelObject)
 
     #    if not parentImage_:
     #        parentImage_ = Image(name=image_name, path = '/static/tag_images/', description = "development test", source = sourceType, pub_date=datetime.now())
@@ -265,6 +330,63 @@ def getInfo(request):
     return JsonResponse(response, safe=False)
 
 
+# function to get category information for all categories
+@require_GET
+@csrf_exempt
+def get_category_info(request):
+    response = {}
+    for category in CategoryType.objects.all():
+        response[category.category_name] = {
+            'color': str(category.color),
+        }
+    return JsonResponse(response, safe=False)
+
+
+# function to get LOLA craters within the specified region for annotation app
+@csrf_exempt
+@require_GET
+def getLOLACraterAnnotations(request):
+    # get parameters from request
+    UpperLeftLatitude = float(request.GET['UpperLeftLatitude'])
+    UpperLeftLongitude = float(request.GET['UpperLeftLongitude'])
+    LowerRightLatitude = float(request.GET['LowerRightLatitude'])
+    LowerRightLongitude = float(request.GET['LowerRightLongitude'])
+
+    minLatitude = min(UpperLeftLatitude, LowerRightLatitude)
+    maxLatitude = max(UpperLeftLatitude, LowerRightLatitude)
+    minLongitude = min(UpperLeftLongitude, LowerRightLongitude)
+    maxLongitude = max(UpperLeftLongitude, LowerRightLongitude)
+
+    print(minLatitude, maxLatitude, minLongitude, maxLongitude)
+
+    # get file path
+    folderpath = os.path.realpath(settings.STATIC_ROOT)
+    filename = folderpath + "/lroc_crater_db.csv"
+
+    # parse file to get only required crater data
+    craterList = []
+    with open(filename) as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader)
+        for line in reader:
+            if (float(line[1]) <= maxLatitude and
+                    float(line[1]) >= minLatitude and
+                    float(line[0]) <= maxLongitude and
+                    float(line[0]) >= minLongitude):
+                craterList.append(line)
+
+    # print(craterList)
+    return JsonResponse(craterList, safe=False)
+
+
+# function to get image metadata from json file
+# This function assumes json files are in static_root
+def getImageMetadata(file):
+    with open(file, 'r') as json_file:
+        metadata = json.load(json_file)
+    return metadata
+
+
 @require_GET
 def getNewImage(request):
     # if not 'image_name' in request.GET or not 'path' in request.GET:
@@ -308,7 +430,6 @@ def getNewImage(request):
             images = all_unfinished_images.filter(categoryType__category_name=cat)
             if images:
                 break
-    print(images)
 
     images = images.order_by('count').reverse()
     print(images)
@@ -326,7 +447,7 @@ def getNewImage(request):
 
     img = None
     for im in images:
-        index = randint(0, len(images))
+        index = randint(0, len(images) - 1)
         i = images[index]
         subimage = crop_images.getImageWindow(i, request.user, ignore_max_count=ignore_max_count)
         if subimage is not None:
@@ -336,19 +457,28 @@ def getNewImage(request):
     if not img:
         return HttpResponseBadRequest("Could not find image to serve")
     label_list = ImageLabel.objects.all().filter(parentImage=img).order_by('pub_date').last()
+
+    # fetch image metadata from xml file
+    metadata_file = os.path.realpath(settings.STATIC_ROOT) + '/life-images-json/' + img.name
+    image_metadata = {}
+    if os.path.exists(metadata_file):
+        image_metadata = getImageMetadata(metadata_file)
+        print("Log: Colors in getNewImage: ", img.categoryType.all())
+
     response = {
         'path': img.path,
+        'metadata': image_metadata,
         'image_name': img.name,
         'categories': [c.category_name for c in CategoryType.objects.all()],
         'shapes': [c.get_label_type_display() for c in img.categoryType.all()],
-        'colors': [str(c.color) for c in img.categoryType.all()],
+        'colors': [str(c.color) for c in CategoryType.objects.all()],
         'subimage': subimage,
     }
-    if label_list:
-        response['labels'] = label_list.labelShapes
-        response['labels'] = label_list.combined_labelShapes
-    else:
-        response['labels'] = ''
+    # if label_list:
+    #    response['labels'] = label_list.labelShapes
+    #    response['labels'] = label_list.combined_labelShapes
+    # else:
+    response['labels'] = ''
 
     return JsonResponse(response)
 
@@ -576,19 +706,11 @@ def get_overlayed_combined_image(request, image_label_id):
     except RuntimeError as e:
         print(e, file=sys.stderr)
         return HttpResponseServerError(str(e))
-    foreground = PILImage.open(io.BytesIO(blob))
-    foreground = foreground.convert('RGBA')
-    # path = re.match(re_image_path, image.path).groups(1)[0]
-    path = image.path
-    # background = PILImage.open(path + image.name).convert('RGB')
-    # print(request.get_host())
-    # fd = urllib.request.urlopen(path+image.name)
-    # image_file = io.BytesIO(fd.read())
-    url = 'http://' + request.get_host() + path + image.name
-    background = PILImage.open(urlopen(url))
-    background.paste(foreground, (0, 0), foreground)
+
+    # image with annotations has been saved as blob
+    foreground = PILImage.open(io.BytesIO(blob)).convert('RGBA')
     output = io.BytesIO()
-    background.save(output, format='png')
+    foreground.save(output, format='png')
     return HttpResponse(output.getvalue(), content_type="image/png")
 
 
@@ -682,7 +804,7 @@ def add_tiled_label(request):
     # print(request['POST'])
     request_json = json.load(request)
 
-    tiled_label = TiledGISLabel()
+    tiled_label = TiledLabel()
     tiled_label.northeast_Lat = request_json["northeast_lat"]
     tiled_label.northeast_Lng = request_json["northeast_lng"]
     tiled_label.southwest_Lat = request_json["southwest_lat"]
@@ -708,6 +830,7 @@ def add_tiled_label(request):
 
 from django.db.models import Q
 
+
 @csrf_exempt
 def get_all_tiled_labels(request):
     xmin = float(request.GET.get("southwest_lng"))
@@ -725,7 +848,6 @@ def get_all_tiled_labels(request):
         new_polygon = new_polygon.union(polygon)
 
     query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox).filter(~Q(geometry__within=new_polygon))
-
 
     for tiled_label in query_set:
         response_dict = {}
@@ -749,6 +871,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 import base64
 import math
+
 
 @csrf_exempt
 def get_histogram_for_window(request):
@@ -782,6 +905,36 @@ def get_histogram_for_window(request):
     encoded_string = base64.b64encode(response.read())
     return HttpResponse(encoded_string, 'contentType: image/PNG')
 
+
+def get_window_tiled_labels(request):
+    response_obj = []
+    float_tollerance = 1e-5
+    print(request)
+    request_json = json.load(request)
+    print(request_json)
+
+    tileLabels = TiledLabel.objects.filter(
+        northeast_Lat__range=(
+        request_json["northeast_lat"] - float_tollerance, request_json["northeast_lat"] + float_tollerance),
+        northeast_Lng__range=(
+        request_json["northeast_lng"] - float_tollerance, request_json["northeast_lat"] + float_tollerance),
+        southwest_Lat__range=(
+        request_json["southwest_lat"] - float_tollerance, request_json["northeast_lat"] + float_tollerance),
+        southwest_Lng__range=(
+        request_json["southwest_lng"] - float_tollerance, request_json["northeast_lat"] + float_tollerance))
+
+    for tiled_label in tileLabels:
+        response_dict = {}
+        response_dict["northeast_lat"] = tiled_label.northeast_Lat
+        response_dict["northeast_lng"] = tiled_label.northeast_Lng
+        response_dict["southwest_lat"] = tiled_label.southwest_Lat
+        response_dict["southwest_lng"] = tiled_label.southwest_Lng
+        response_dict["zoom_level"] = tiled_label.zoom_level
+        response_dict["label_type"] = tiled_label.get_label_type_display()
+        response_dict["geoJSON"] = tiled_label.label_json
+        response_dict["category"] = tiled_label.category.category_name
+        response_obj.append(response_dict)
+    return JsonResponse(response_obj, safe=False)
 
 
 @csrf_exempt
@@ -897,7 +1050,7 @@ def get_tiled_label_coordinates(request):
                  'latitude': (tl.northeast_Lat + tl.southwest_Lat) / 2,
                  'longitude': (tl.northeast_Lng + tl.southwest_Lng) / 2}
                 for tl in TiledLabel.objects.all()]
-    print(lat_long)
+    # print(lat_long)
     return JsonResponse(lat_long, safe=False)
 
 

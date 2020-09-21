@@ -11,6 +11,7 @@ from .models import TiledLabel
 urlpatterns = [
                   #Page URLs
     path('', views.index, name='label_index'),
+    #path('', views.label, name='label'),
     path('label', views.label, name='label'),
     path('results', views.results, name='results'),
     path('view_label', views.view_label, name='view_label'),
@@ -30,21 +31,25 @@ urlpatterns = [
     path('combineAllImages', views.combineAllImages),
     path('calculateEntropyMap', views.calculateEntropyMap),
     path('applyLabels', views.applyLabels),
+    path('createMasks', views.createMasks),
     path('loadLabels', views.loadLabels),
+    path('displayAnnotations', views.display_annotations),
+    #added the following path to implement annotation help on label app
+    url(r'^getLOLACraterAnnotations/$', views.getLOLACraterAnnotations),
     #path('fix_label_location', views.fix_label_location),
     path('print_label_data', views.print_label_data),
     url(r'^get_overlayed_combined_image/(?P<image_label_id>[0-9]*)$', views.get_overlayed_combined_image),
     url(r'^get_overlayed_category_image/(?P<category_label_id>[0-9]*)$', views.get_overlayed_category_image),
     url(r'^get_all_tiled_labels/', views.get_all_tiled_labels, name='get_all_tiled_labels'),
-                  url(r'^get_histogram_for_window/', views.get_histogram_for_window, name='get_histogram_for_window'),
-
-                  path('addTiledLabel', views.add_tiled_label),
+    path('addTiledLabel', views.add_tiled_label),
     path('TiledLables',views.get_all_tiled_labels),
-                  # path('WindowTiledLables', views.get_window_tiled_labels),
+    path('WindowTiledLables', views.get_window_tiled_labels),
     path('addTiledImage', views.add_train_image_label),
     path('addTiledCategories', views.add_all_tiled_categories),
     path('deleteTileLabels', views.delete_tile_label),
     path('addCategory', views.add_new_category),
+    # path to get updated category information
+    path('getCategoryInfo', views.get_category_info),
     path('getTiledLabelCoordinates', views.get_tiled_label_coordinates),
     path('getCombinedLabelGeojson', views.get_combined_label_geojson),
-    ]+ static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

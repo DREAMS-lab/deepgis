@@ -3,6 +3,9 @@ version: '2'
 services:
   db:
     build: dockerfiles/postgres/
+    environment:
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=postgres
     volumes:
       - persistent-storage:/var/lib/postgresql/data
   web:
@@ -11,18 +14,11 @@ services:
       - "8000:8000"
     depends_on:
       - db
+    restart: always
     volumes:
       - ./:/app
-      - /home/jdas:/home/jdas
     working_dir: /app
     command: bash -c "python3 manage.py makemigrations webclient && python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
 
-networks:  
-  default:
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.32.0.0/16
-          gateway: 172.32.0.1
 volumes:
   persistent-storage:

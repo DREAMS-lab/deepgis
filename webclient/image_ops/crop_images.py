@@ -9,8 +9,8 @@ import random
 
 NUM_WINDOW_ROWS = 1
 NUM_WINDOW_COLS = 1
-WINDOW_PADDING = 20
-NUM_LABELS_PER_WINDOW = 3
+WINDOW_PADDING = 0
+NUM_LABELS_PER_WINDOW = 4
 
 def calculate_entropy_map(image, category):
     images = ImageLabel.objects.all().filter(categoryType=category)

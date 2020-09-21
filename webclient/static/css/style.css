@@ -23,21 +23,15 @@ button #next {
 div #canvasDiv {
   font-size:13pt;
   font-family:'Roboto', sans-serif;
-  width: 1000px;
-  height: 1000px;
 }
 
 div #canvasWrapper {
  /* border: 20px inset rgba(0,0,0, 0.5);*/
-  width: 1000px;
-  height: 1000px;
 }
 
 
 #canvas {
     border: 3px solid black;
-    width: 1000px;
-    height: 1000px;
     /*box-shadow: inset 0 0 20px 20px rgba(255,0,0,0.5); */
 }
 
@@ -137,29 +131,6 @@ div #imageControl {
   font-weight:bold;
 }
 
-.gpsDiv {
-  position: absolute;
-  display: flex;
-  right: 0px;
-  bottom: 5px;
-  padding: 10px;
-  background-color: #151B29;
-  color: white;
-  font-size: 14px;
-  white-space: pre;
-  border-radius: 0px 5px 0px 0px;
-}
-
-.gpsLat, .gpsLon {
-  width: 150px;
-  float: left;
-}
-
-.scaleText {
-  width: 70px;
-  float: left;
-}
-
 .logoutBtn {
   position: fixed;
   background-color: red;
@@ -177,9 +148,6 @@ div #imageControl {
   padding: 8px !important;
 }
 
-#image_info {
-  margin-top: 100px;
-}
 
 i {
   margin-right: 10px;
@@ -231,13 +199,6 @@ i {
   padding: 5px;
 }
 
-.footer {
-  bottom: 0px;
-  position: sticky;
-  width: 100%;
-  background-color: #151B29;
-  height: 50px;
-}
 
 /* The snackbar - position it at the bottom and in the middle of the screen */
 #snackbar {
