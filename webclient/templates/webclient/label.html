@@ -21,17 +21,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-mousewheel/3.1.13/jquery.mousewheel.min.js"></script>
 
 	<script type="text/paperscript" canvas="canvas">
-	var startPoint;
-	var raster;
-	var labelsLayer = new paper.Layer();
-	var isActive = false;
-	// var labelsDrawn = 0; //Whether a label has been drawn on this image
-	var prevLabels = 0;
-	var chosenTool = 'circle'; //set default annotation tool to circle
-    var PAN_STEP=100
 	window.globals = {};
-	category_groups = {};
-	category_shapes = {};
+	globals.startPoint = {};
+	globals.raster = {};
+	globals.isActive = false;
+	globals.chosenTool = 'circle';
+	globals.categoryGroups = {};
+	globals.categoryShapes = {};
+	globals.initialCenter = {};
+	globals.panStep = 1;
+	var labelsLayer = new paper.Layer();
+
 	var create_groups_shapes = function(categories, colors, shapes) {
 		var groups = {};
 		for (i = 0; i < categories.length; i++) {
@@ -43,9 +43,9 @@
 				opacity: 0.5,
 				visible: true
 			});
-			category_shapes[categories[i]] = shapes[i];
+			globals.categoryShapes[categories[i]] = shapes[i];
 		}
-		category_groups = groups;
+		globals.categoryGroups = groups;
 	};
 
 	globals.create_groups_shapes = create_groups_shapes;
@@ -90,7 +90,9 @@
 		$("#canvas").mousemove(function() {
 			var xLocation = event.pageX-canvasPosition.left-303;
 			var yLocation = event.pageY-canvasPosition.top-3;
-
+			if (globals.locationData.UpperLeft == undefined) {
+				return;
+			}
 			// calculate point in lat long scale
 			var y_point = globals.locationData.UpperLeft.Latitude + (((globals.locationData.LowerRight.Latitude - globals.locationData.UpperLeft.Latitude)*yLocation)/996)
 			var x_point = globals.locationData.UpperLeft.Longitude + (((globals.locationData.LowerRight.Longitude - globals.locationData.UpperLeft.Longitude)*xLocation)/996)
@@ -110,10 +112,10 @@
 
 			if(scaleX == scaleY)
 			{
-				scaleContent = scaleX + " mm/px"
+				scaleContent = "Scale: " + scaleX + " m/px"
 			}
 			else {
-				scaleContent = "x: " + scaleX + " m/px, y: "+ scaleY+" m/px";
+				scaleContent = "Scale: " + "x: " + scaleX + " m/px, y: "+ scaleY+" m/px";
 			}
 
 			if(xLocation >= 0 && xLocation <= 996 && yLocation >= 0 && yLocation <= 996)
@@ -132,21 +134,12 @@
 			$("#gpsDiv").toggle(false);
 		});
 
-		//create masks
-//		$("#createMasks").click(function(){
-//			$.ajax({
-//				async: true,
-//				url:"/webclient/createMasks",
-//				type:"POST",
-//				dataType:'text'
-//			});
-//		});
-
-
-
 		$("#applyLabels").click(function() {
 			endTime = Date.now();
 			timeTaken = endTime - startTime;
+			labelsLayer.view.zoom = 1;
+			window.labelsLayer.view.zoom = 1;
+			labelsLayer.view.setCenter(globals.initialCenter);
 
 			//Check if there are labels or if the no label checkbox is checked
 			if (globals.labelsDrawn <= 0 && !$('#noLabels').prop('checked')) {
@@ -154,15 +147,14 @@
 				' check the "No Labels in image" checkbox');
 				return false;
 			}
-			//var updated_category = $("#categories").val();
-			//selectedImage = JSON.parse($('#imageCombo').val().toString());
+
 			$('#noLabels').prop('checked', false);
-			prevLabels = globals.labelsDrawn;
+			var prevLabels = globals.labelsDrawn;
 			globals.labelsDrawn = 0;
 
 			var group_svgs = {};
-			for (var key in category_groups) {
-				var g_svg = category_groups[key].exportSVG({
+			for (var key in globals.categoryGroups) {
+				var g_svg = globals.categoryGroups[key].exportSVG({
 					embedImages: false,
 					asString: true,
 					matchShapes: true
@@ -178,28 +170,12 @@
 
 			//Align circles to original image
 			svg.getElementsByTagName('image')[0].remove(); //Remove embedded image
-			var x = parseInt(imageX) - parseInt(imagePadding);
-			var y = parseInt(imageY) - parseInt(imagePadding);
-			for (i = 0, circles = svg.getElementsByTagName('circle'); i < circles.length; i++) {
-				circles[i].setAttribute('transform', 'translate(' + (x) + ',' + (y) + ')');
-			}
-			//adding the same for ellipse
-			for (i = 0, ellipses = svg.getElementsByTagName('ellipse'); i < ellipses.length; i++) {
-				ellipses[i].setAttribute('transform', 'translate(' + (x) + ',' + (y) + ')');
-			}
-
-			for (i = 0, rectangles = svg.getElementsByTagName('rectangle'); i < rectangles.length; i++) {
-				rectangles[i].setAttribute('transform', 'translate(' + (x) + ',' + (y) + ')');
-			}
-			for (i = 0, bezier = svg.getElementsByTagName('path'); i < bezier.length; i++) {
-				bezier[i].setAttribute('transform', 'translate(' + (x) + ',' + (y) + ')');
-			}
 			var orig_img = svg.getElementsByTagName('image')[0];
-			orig_img.setAttribute('x', '0');
-			orig_img.setAttribute('y', '0');
+			orig_img.setAttribute('x', 0);
+			orig_img.setAttribute('y', 0);
+
 			xmlSer = new XMLSerializer();
 			svg = xmlSer.serializeToString(svg);
-			$('#debug').text('loading next image...');
 			$.ajax({
 				url: "/webclient/applyLabels",
 				type: "POST",
@@ -223,30 +199,29 @@
 					timeTaken: timeTaken
 				}),
 				success: function(data) {
-					$('#debug').text('');
+					showSnackBar("New image");
 					if (window.labelsLayer.hasChildren()) {
 						window.labelsLayer.removeChildren();
 					}
 					globals.aboveExistingLabel = false;
 					//window.labelsLayer.importJSON(JSON.parse(data));
 					//$('#noLabels').prop('checked', false);
-					getNewImage();
+					getNewImage(false);
 				},
 				error: function(xhr, errmsg, err) {
-					alert(xhr.status + ": " + xhr.responseText);
+					showSnackBar(xhr.status + ": " + xhr.responseText);
 					globals.labelsDrawn = prevLabels;
-
 				}
 			});
 			return false;
 		});
 
 		//set initial value of chosenTool to current radio button value
-		chosenTool = document.querySelector('input[name="tool_select"]:checked').value;
+		globals.chosenTool = document.querySelector('input[name="tool_select"]:checked').value;
 
 		//adding logic to save chosen annotation tool
 		$('input[name$="tool_select"]').change(function(){
-			chosenTool = $(this).val();
+			globals.chosenTool = $(this).val();
 		});
 
 	});
@@ -279,11 +254,11 @@
 	var currentSegment, mode, type;
 	function onMouseDown(event) {
 		//for all shape annotation tools
-		if(chosenTool !== 'bezier')
+		if(globals.chosenTool !== 'bezier')
 		{
 			if (!globals.aboveExistingLabel) { //Create new label
 				startPoint = event.point;
-				isActive = true; //Whether the path is currently being created
+				globals.isActive = true; //Whether the path is currently being created
 				var center = (startPoint + event.point) / 2;
 				//window.circlePath = new Path.Circle(center, startPoint.getDistance(event.point)/2);
 				globals.dragged = false; //Whether the path has been created with a click and dragged to be larger than a simgle point
@@ -293,82 +268,82 @@
 		}
 		//for bezier
 		else {
-			if (!globals.aboveExistingLabel) {
-				if (currentSegment)
-					currentSegment.selected = false;
-				mode = type = currentSegment = null;
+			if(!event.event.shiftKey) {
+				if (!globals.aboveExistingLabel) {
+					if (currentSegment)
+						currentSegment.selected = false;
+					mode = type = currentSegment = null;
 
-				if (!path)
-				{
-					path = new Path();
-					isActive = true;
-					path.fillColor = {
-						hue: 360 * Math.random(),
-						saturation: 1,
-						brightness: 1,
-						alpha: 0.5
-					};
-				}
-			}
-			var result = findHandle(event.point);
-			if (result)
-			{
-				currentSegment = result.segment;
-				type = result.type;
-				if (path.segments.length > 1 && result.type == 'point' && result.segment.index == 0)
-				{
-					mode = 'close';
-					isActive = false;
-					var category = $('input[name=category_select]:checked', '#categories').val();
-					var shape = category_shapes[category];
-					globals.labelsDrawn += 1;
-					category_groups[category].addChild(path);
-					path.style = category_groups[category].style;
-					path.opacity = 1;
-					path.closed = true;
-					path.selected = false;
-
-					path.onMouseEnter = function(event)
+					if (!path)
 					{
-						if (!isActive)
+						path = new Path();
+						globals.isActive = true;
+						path.fillColor = {
+							hue: 360 * Math.random(),
+							saturation: 1,
+							brightness: 1,
+							alpha: 0.5
+						};
+					}
+				}
+				var result = findHandle(event.point);
+				if (result)
+				{
+					currentSegment = result.segment;
+					type = result.type;
+					if (path.segments.length > 1 && result.type == 'point' && result.segment.index == 0)
+					{
+						mode = 'close';
+						globals.isActive = false;
+						var category = $('input[name=category_select]:checked', '#categories').val();
+						var shape = globals.categoryShapes[category];
+						globals.labelsDrawn += 1;
+						globals.categoryGroups[category].addChild(path);
+						path.style = globals.categoryGroups[category].style;
+						path.opacity = 1;
+						path.closed = true;
+						path.selected = false;
+
+						path.onMouseEnter = function(event)
 						{
-							globals.aboveExistingLabel = true;
-							this.opacity = 1;
-							window.circlePath = this;
-						}
-					};
+							if (!globals.isActive)
+							{
+								globals.aboveExistingLabel = true;
+								this.opacity = 1;
+								window.circlePath = this;
+							}
+						};
 
-					path.onMouseLeave = function(event)
-					{
-						globals.aboveExistingLabel = false;
-						mode = null;
-						this.style = category_groups[category].style;
-						this.opacity = category_groups[category].opacity;
-					};
-					path.onDoubleClick = function(event)
-					{
-						isActive = false;
-						globals.aboveExistingLabel = false;
-						this.remove();
+						path.onMouseLeave = function(event)
+						{
+							globals.aboveExistingLabel = false;
+							mode = null;
+							this.style = globals.categoryGroups[category].style;
+							this.opacity = globals.categoryGroups[category].opacity;
+						};
+						path.onDoubleClick = function(event)
+						{
+							globals.isActive = false;
+							globals.aboveExistingLabel = false;
+							this.remove();
+							path = null;
+							globals.labelsDrawn -= 1;
+						};
 						path = null;
-						globals.labelsDrawn -= 1;
-					};
-					path = null;
+					}
 				}
-			}
-
-			if (mode != 'close')
-			{
-				mode = currentSegment ? 'move' : 'add';
-				if (!currentSegment)
-				currentSegment = path.add(event.point);
-				currentSegment.selected = true;
+				if (mode != 'close') {
+					mode = currentSegment ? 'move' : 'add';
+					if (!currentSegment)
+					currentSegment = path.add(event.point);
+					currentSegment.selected = true;
+				}
 			}
 		}
 	}
 
 	function onDelete(){
-		if(chosenTool=='bezier')
+		if(globals.chosenTool=='bezier')
 			currentSegment = path.removeSegment(path._segments.length -1);
 		else {
 			showSnackBar("Undo is currently available only for bezier curves");
@@ -384,7 +359,7 @@
 	});
 
 	var ZOOM_FACTOR = 1.05;
-	var initialCenter = view.center;
+
 
 	// On mouse scroll...
 	$('canvas').mousewheel(function(event) {
@@ -411,6 +386,7 @@
 
 	$('#resetCanvasZoom').click(function() {
 		view.zoom = 1;
+		view.setCenter(globals.initialCenter);
 	});
 
 	var $window = $(window), previousScrollTop = 0, scrollLock = false;
@@ -424,13 +400,12 @@
 
 	function onMouseDrag(event) {
 		var category = $('input[name=category_select]:checked', '#categories').val();
-		var shape = category_shapes[category];
+		var shape = globals.categoryShapes[category];
 		var radius = 0;
 		if(!event.event.shiftKey)
 		{
-
             //handle bezier annotation tool drag event here
-            if(chosenTool==='bezier')
+            if(globals.chosenTool==='bezier')
             {
                 if (mode == 'move' && type == 'point')
                 {
@@ -448,7 +423,7 @@
             //handle shape tools drag events here
             else
             {
-                if (isActive) {
+                if (globals.isActive) {
                     var center = (startPoint + event.point) / 2;
                     if (!globals.dragged) {
                         // changing this to reflect local radio button choice than database option
@@ -462,7 +437,7 @@
                         // 	window.circlePath = new Path.Ellipse(startPoint, event.point);
                         // }
                         //adding a switch case to account for possible other annotation tool options
-                        switch (chosenTool) {
+                        switch (globals.chosenTool) {
                             case 'circle':
                                 window.circlePath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
                                 break;
@@ -475,8 +450,8 @@
 
                         globals.dragged = true;
                         globals.labelsDrawn += 1;
-                        category_groups[category].addChild(window.circlePath);
-                        window.circlePath.style = category_groups[category].style;
+                        globals.categoryGroups[category].addChild(window.circlePath);
+                        window.circlePath.style = globals.categoryGroups[category].style;
                         window.circlePath.opacity = 1;
                     }
                     //changing this to reflect local radio button choice than database option
@@ -490,7 +465,7 @@
                     // }
                     //
                     //adding a switch case to account for possible other annotation tool options
-                    switch (chosenTool) {
+                    switch (globals.chosenTool) {
                         case 'circle':
 
                             newPath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
@@ -509,12 +484,12 @@
 
                     setCraterDiv(diameter);
 
-                    category_groups[category].addChild(newPath);
-                    newPath.style = category_groups[category].style;
+                    globals.categoryGroups[category].addChild(newPath);
+                    newPath.style = globals.categoryGroups[category].style;
                     newPath.opacity = 1;
 
                     newPath.onMouseEnter = function(event) {
-                        if (!isActive) {
+                        if (!globals.isActive) {
                             globals.aboveExistingLabel = true;
                             this.opacity = 1;
                             window.circlePath = this;
@@ -522,11 +497,11 @@
                     };
                     newPath.onMouseLeave = function(event) {
                         globals.aboveExistingLabel = false;
-                        this.style = category_groups[category].style;
-                        this.opacity = category_groups[category].opacity;
+                        this.style = globals.categoryGroups[category].style;
+                        this.opacity = globals.categoryGroups[category].opacity;
                     };
                     newPath.onDoubleClick = function(event) {
-                        isActive = false;
+                        globals.isActive = false;
                         globals.aboveExistingLabel = false;
                         this.remove();
                         globals.labelsDrawn -= 1;
@@ -546,9 +521,9 @@
 	}
 
 	function onMouseUp(event) {
-		if(chosenTool!=='bezier')
+		if(globals.chosenTool !== 'bezier')
 		{
-			isActive = false;
+			globals.isActive = false;
 			if (!globals.dragged) {
 				globals.aboveExistingLabel = false;
 			} else {
@@ -565,7 +540,7 @@
 	imageWidth = 0;
 	imageHeight = 0;
 	ZOOM_STEP_SIZE =1;
-	PAN_STEP = 1;
+
 	var currentImage = {};
 
 	// function to set value of location data to global variable
@@ -580,10 +555,10 @@
 		$('#debug').show();
 		$('#controls').show();
 		$('#displayTable').show();
+		$('#image_info').show();
 		$('#undo').show();
 		$('#applyLabels').show();
 		$('#getLOLACraterAnnotationsButton').show();
-		$('#createMasks').show();
 		$('#noLabelsList').show();
 		$('#generateDataset').hide();
 		$('#googleColab').hide();
@@ -597,10 +572,10 @@
 			$('#debug').hide();
 			$('#controls').hide();
 			$('#displayTable').hide();
+			$('#image_info').hide();
 			$('#undo').hide();
 			$('#applyLabels').hide();
 			$('#getLOLACraterAnnotationsButton').hide();
-			$('#createMasks').hide();
 			$('#noLabelsList').hide();
 			$('#generateDataset').show();
 			$('#googleColab').show();
@@ -621,11 +596,15 @@
 							$("#annotation_grid_body").append(`<tr data-row-id="${property}">
 							<td><input type="checkbox" id="${property}_input" class="sub_chk" data-id="${property}"></td>
 							<td id="${property}_parent_image">${content[property]["parent_image"]}</td>
+							<td id="${property}_labeler">${content[property]["labeler"]}</td>
 							<td id="${property}_width">${content[property]["width"]}</td>
 							<td id="${property}_height">${content[property]["height"]}</td>
 							<td id="${property}_padding_x">${content[property]["padding_x"]}</td>
 							<td id="${property}_padding_y">${content[property]["padding_y"]}</td>
 							<td id="${property}_timetaken">${content[property]["timetaken"]}</td>
+							<td id="${property}_number">
+								<a href="javascript:;" class="pop" onClick="modalShow(this)" src="/webclient/get_overlayed_combined_image/${content[property]["number"]}">Show</a>
+							</td>
 							</tr>`)
 						}
 					} else {
@@ -633,10 +612,10 @@
 						$('#debug').show();
 						$('#controls').show();
 						$('#displayTable').show();
+						$('#image_info').show();
 						$('#undo').show();
 						$('#applyLabels').show();
 						$('#getLOLACraterAnnotationsButton').show();
-						$('#createMasks').show();
 						$('#noLabelsList').show();
 						$('#generateDataset').hide();
 						$('#googleColab').hide();
@@ -650,10 +629,10 @@
 					$('#debug').show();
 					$('#controls').show();
 					$('#displayTable').show();
+					$('#image_info').show();
 					$('#undo').show();
 					$('#applyLabels').show();
 					$('#getLOLACraterAnnotationsButton').show();
-					$('#createMasks').show();
 					$('#noLabelsList').show();
 					$('#generateDataset').hide();
 					$('#googleColab').hide();
@@ -677,11 +656,11 @@
 				 				padding_x: $("#" + index.toString() + "_padding_x").text(),
 				 				padding_y: $("#" + index.toString() + "_padding_y").text(),
 				 				timetaken: $("#" + index.toString() + "_timetaken").text(),
+				 				user: $("#" + index.toString() + "_labeler").text(),
 				 				})
 			}
 		});
 		var location = document.location.origin;
-		console.log(location);
 		$.ajax({
 			url: "/webclient/createMasks",
 			type: "POST",
@@ -702,24 +681,24 @@
 		});
 	}
 	function zoomIn(){
-		labelsLayer.view.zoom = labelsLayer.view.zoom + ZOOM_STEP_SIZE
+		labelsLayer.view.zoom = labelsLayer.view.zoom + ZOOM_STEP_SIZE;
 	}
 
 	function zoomOut(){
-		labelsLayer.view.zoom = labelsLayer.view.zoom - ZOOM_STEP_SIZE
+		labelsLayer.view.zoom = labelsLayer.view.zoom - ZOOM_STEP_SIZE;
 	}
 
 	function panUp(){
-        labelsLayer.view.setCenter(labelsLayer.view.center.x,labelsLayer.view.center.y - PAN_STEP);
+        labelsLayer.view.setCenter(labelsLayer.view.center.x, labelsLayer.view.center.y - globals.panStep);
 	}
 	function panDown(){
-        labelsLayer.view.setCenter(labelsLayer.view.center.x,labelsLayer.view.center.y + PAN_STEP);
+        labelsLayer.view.setCenter(labelsLayer.view.center.x, labelsLayer.view.center.y + globals.panStep);
 	}
 	function panRight(){
-        labelsLayer.view.setCenter(labelsLayer.view.center.x +PAN_STEP,labelsLayer.view.center.y);
+        labelsLayer.view.setCenter(labelsLayer.view.center.x + globals.panStep, labelsLayer.view.center.y);
 	}
 	function panLeft(){
-        labelsLayer.view.setCenter(labelsLayer.view.center.x-PAN_STEP,labelsLayer.view.center.y);
+        labelsLayer.view.setCenter(labelsLayer.view.center.x - globals.panStep, labelsLayer.view.center.y);
 	}
 
 
@@ -755,7 +734,7 @@
 		$("#scaleDivContent").html(scaleDivContentText);
 	}
 
-// function to respond to Get Annotation help button click event
+	// function to respond to Get Annotation help button click event
 	function getLOLACraterAnnotations() {
 		globals.LOLAAnnotationsDrawn = false;
 		$.ajax({
@@ -778,7 +757,7 @@
 	}
 
 
-// function to calculate pixel point from latlon
+	// function to calculate pixel point from latlon
 	function getPointFromLatLon(lat, lon)
 	{
 		var y = Math.abs(996*(lat - globals.locationData.UpperLeft.Latitude)/(globals.locationData.LowerRight.Latitude - globals.locationData.UpperLeft.Latitude));
@@ -787,7 +766,7 @@
 	}
 
 
-// function to draw LOLA Annotations on the canvas
+	// function to draw LOLA Annotations on the canvas
 	function drawLOLAAnnotations()
 	{
 		if(globals.LOLAAnnotationsDrawn == false)
@@ -808,7 +787,7 @@
 			}
 
 			var category = $('input[name=category_select]:checked', '#categories').val();
-			var shape = category_shapes[category];
+			var shape = globals.categoryShapes[category];
 			var newPath;
 
 			for(i=0;i<data.length;i++)
@@ -816,13 +795,13 @@
 				scaled_radius = 996*data[i][2]/(globals.locationData.Scale.X*2);
 				window.circlePath = new paper.Path.Circle(getPointFromLatLon(data[i][1],data[i][0]), scaled_radius);
 				globals.labelsDrawn += 1;
-				category_groups[category].addChild(window.circlePath);
-				window.circlePath.style = category_groups[category].style;
-				window.circlePath.opacity = category_groups[category].opacity;
-				isActive = false;
+				globals.categoryGroups[category].addChild(window.circlePath);
+				window.circlePath.style = globals.categoryGroups[category].style;
+				window.circlePath.opacity = globals.categoryGroups[category].opacity;
+				globals.isActive = false;
 
 				window.circlePath.onMouseEnter = function(event) {
-					if (!isActive) {
+					if (!globals.isActive) {
 						globals.aboveExistingLabel = true;
 						this.opacity = 0.8;
 						window.circlePath = this;
@@ -830,11 +809,11 @@
 				};
 				window.circlePath.onMouseLeave = function(event) {
 					globals.aboveExistingLabel = false;
-					this.style = category_groups[category].style;
-					this.opacity = category_groups[category].opacity;
+					this.style = globals.categoryGroups[category].style;
+					this.opacity = globals.categoryGroups[category].opacity;
 				};
 				window.circlePath.onDoubleClick = function(event) {
-					isActive = false;
+					globals.isActive = false;
 					globals.aboveExistingLabel = false;
 					this.remove();
 					globals.labelsDrawn -= 1;
@@ -865,13 +844,13 @@
 		setTimeout(function(){ snackBar.className = snackBar.className.replace("show", ""); }, 3000);
 	}
 
-	function getNewImage() {
+	function getNewImage(refresh) {
 		startTime = Date.now();
 		if (!window.labelsLayer) {
 			window.labelsLayer = new paper.Layer();
 		} else {
 			original_image_raster.remove();
-			raster.remove();
+			globals.raster.remove();
 		}
 		//selectedImage = JSON.parse($('#imageCombo').val());
 		$.ajax({
@@ -902,6 +881,7 @@
 
 			imageHeight = response.subimage.height;
 			imagePadding = response.subimage.padding;
+
 			if (typeof padding == 'undefined') {
 				padding = 0;
 			}
@@ -922,7 +902,7 @@
 			alert("Problem with width, height, or padding value");
 			return;
 		}
-
+		padding = 0;
 		size = new paper.Size(width + 2 * padding, height + 2 * padding);
 		//Add new image and resize canvas to fit image
 		img = new Image();
@@ -942,6 +922,7 @@
 		} catch (err) {
 			alert("Image cannot be opened. Note that currently external URLs cannot be used. Error: " + err.message)
 		}
+
 		function setup_images() {
 			//paper.view.setViewSize(img.naturalWidth, img.naturalHeight);
 			paper.view.setViewSize(size);
@@ -949,17 +930,20 @@
 
 			$('#canvas').css('width', size.width).css('height', size.height);
 			point = new paper.Point(point.x, point.y);
+			$('#canvasWrapper').css('width', size.width).css('height', size.height);
+			$('#canvasDiv').css('width', size.width).css('height', size.height);
+			/////$('#canvas').css('box-shadow', " -20 -20 20px" +  imagePadding + "px rgba(255,0,0,0.5)");
+			///point = new paper.Point(point.x - padding, point.y - padding);
 			original_image_raster = new paper.Raster(img);
 			original_image_raster.id = "original image";
-			raster = original_image_raster.getSubRaster(new paper.Rectangle(point, size));
-			raster.position = paper.view.center;
+			globals.raster = original_image_raster.getSubRaster(new paper.Rectangle(point, size));
+			globals.raster.position = paper.view.center;
 			original_image_raster.sendToBack();
-			raster.sendToBack();
+			globals.raster.sendToBack();
 			original_image_raster.visible = false;
-			raster.id = "shifted image";
-			paper.view.zoom =1;
+			globals.raster.id = "shifted image";
 			paper.view.update();
-
+			globals.initialCenter = paper.view.center;
 		}
 		if (img.complete) {
 			setup_images();
@@ -1003,6 +987,12 @@
 		//window.labelsLayer.importJSON(JSON.parse(data));
 	}
 
+	function modalShow(elem) {
+			console.log($(elem).attr('src'));
+			$('.imagepreview').attr('src', $(elem).attr('src'));
+			$('#imagemodal').modal('show');
+	}
+
 	$('document').ready(function() {
 
 		//Canvas Controls
@@ -1030,7 +1020,9 @@
 			$('#contrastControl').val("1").trigger('input');
 			$('#saturationControl').val("1").trigger('input');
 		});
-
+		$('#imagemodal').on('hide.bs.modal', function (e) {
+			$('.imagepreview').attr('src', "");
+		});
 	});
 	</script>
 
@@ -1114,10 +1106,9 @@
 				<li>
 					<button id="maskRCNN" title="Mask RCNN" type="button" onclick="startMaskRCNN()" class="btn btn-outline-primary btn-sm">Mask RCNN</button>
 				</li>
-
 			</ul>
 			<li id="noLabelsList">
-				<p><label><input type="checkbox" id="noLabels" />No labels in image</label></p>
+				<p><label><input type="checkbox" id="noLabels" />No annotations in the image</label></p>
 			</li>
 			<button type="button" title="Undo previous action" id="undo" class="btn btn-danger btn-sm">
 				<i class="fa fa-undo"></i>Undo
@@ -1126,13 +1117,10 @@
 			class="btn btn-success btn-sm">
 				<i class="fa fa-check"></i>Submit Labels
 			</button>
-			<button id="createMasks" title="Creates masks required for MaskRCNN training"
-			type="button" class="btn btn-success btn-sm">
-				<i class="fa fa-send"></i>Create Masks</button>
 			<button id="continueAnnotations" title="Back to Annotations"
 			type="button" class="btn btn-success btn-sm" style="display: none;" onclick="startAnnotations()">
 				<i class="fa fa-send"></i>Continue Annotations</button>
-    	<button type="button" id="getLOLACraterAnnotationsButton"
+			<button type="button" id="getLOLACraterAnnotationsButton"
 				class="btn btn-success btn-sm" onclick="drawLOLAAnnotations()"
 				title="Get annotations from the database">
 				<i class="fa fa-tags"></i>
@@ -1156,18 +1144,16 @@
 			{#% endfor %#}
 		</select>
 	</div> -->
-	<div id="debug">
-
-	</div>
 	<div id="controls">
 		<div id="tips">
 			<p> <h3>Instructions</h3>
 				<ul class="list-group">
 					<li class="list-group-item">
-						Encircle occluded hypoliths/rocks <i>entirely</i>, use your best guess!. <br/>
-						Click and drag to select region. <br/>
+						Use your best guess to annotate interesting features! <br/>
+						Click and drag to select region using circle and ellipse tool. <br/>
+						Use Bezier tool to put points across interesting features. <br/>
 						Undo button or Ctrl+z/Cmd+z removes previously added Bezier point.<br/>
-						Double click to delete an area.<br/>
+						Double click to delete an already annotated area.<br/>
 						Use shift + mouse scroll to zoom inside the image. <br/>
 						Use shift + mouse drag to move the image. <br/>
 						Click <a href="javascript:void(0)" id="resetCanvasZoom">Reset</a> to default zoom.
@@ -1180,40 +1166,27 @@
 			<tr>
 				<td>
 					<div id="canvasDiv">
-						<!--<canvas id="canvas" resize></canvas> -->
 						<div id="canvasWrapper">
 							<canvas id="canvas"></canvas>
 						</div>
-						<div class="footer">
-							<div class="scaleDiv" id="scaleDiv">
-								<div class="scaleDivContent" id="scaleDivContent">
-								</div>
-							</div>
-							<div class="craterDiv" id="craterDiv">
-								<div class="craterDivContent" id="craterDivContent">
-								</div>
-							</div>
-							<div class="gpsDiv" id="gpsDiv">
-								<div class="gpsLat" id="gpsLat"></div>
-								<div class="gpsLon" id="gpsLon"></div>
-								<div class="scaleText" id="scaleText"></div>
-							</div>
-						</div>
-					</div>
-					<div id="image_info">
-						<p id="image_info_name"></p>
-						<!-- <p id="image_info_path"></p> -->
-					</div>
-
-					<div>
-						<p>To report bugs, go to the github page <a href="https://github.com/dreams-lab/deepgis/issues" target="_blank">here</a> and open a new issue</p>
 					</div>
 				</td>
-
 			</tr>
 		</table>
+		<div class="footer">
+			<div class="gpsDiv" id="gpsDiv">
+				<div class="gpsLat" id="gpsLat"></div>
+				<div class="gpsLon" id="gpsLon"></div>
+			</div>
+		</div>
+		<div id="image_info">
+			<div class="scaleText" id="scaleText"></div>
+			<p id="image_info_name"></p>
+			<!-- <p id="image_info_path"></p> -->
+		</div>
+
 		<!-- <a href="#menu-toggle" class="btn btn-secondary" id="menu-toggle">Toggle Menu</a> -->
-<a href="/logout" class="btn btn-danger logoutBtn"><i class="fa fa-sign-out"></i>Logout </a>
+		<a href="/logout" class="btn btn-danger logoutBtn"><i class="fa fa-sign-out"></i>Logout </a>
 		<div id="snackbar"></div>
 			<div id="user_annotations" style="display: none;">
 				<h3>Annotations</h3>
@@ -1224,11 +1197,13 @@
 						<tr>
 							<th><input type="checkbox" id="master"></th>
 							<th>File Name</th>
+							<th>Labeler</th>
 							<th>Width</th>
 							<th>Height</th>
 							<th>Cropped X coordinate</th>
 							<th>Cropped Y coordinate</th>
 							<th>Time Taken</th>
+							<th>Display</th>
 						</tr>
 					</thead>
 					<tbody id="annotation_grid_body">
@@ -1247,7 +1222,21 @@
 				  <img src="https://colab.research.google.com/assets/colab-badge.svg" style="height: 35px;" alt="Open MaskRCNN In Colab"/>
 				</a>
 			</div>
+			<div class="modal fade" id="imagemodal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+			  <div class="modal-dialog">
+				<div class="modal-content">
+				  <div class="modal-body">
+					<button type="button" class="close" data-dismiss="modal" ><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+					<img src="" class="imagepreview" style="width: 100%;" >
+				  </div>
+				</div>
+			  </div>
+			</div>
 	</div>
+		<br><br>
+		<div style="text-align: left;">
+			<p>To report bugs, go to the github page <a href="https://github.com/dreams-lab/deepgis/issues" target="_blank">here</a> and open a new issue</p>
+		</div>
 </div>
 
 <!-- Bootstrap core JavaScript -->
@@ -1315,12 +1304,12 @@ function updateCategoryProperties() {
 		success: function(response) {
 			for (category in response)
 			{
-				if (category in category_groups) {
-					category_groups[category].style.fillColor = response[category]['color'];
-					category_groups[category].style.strokeColor = response[category]['color'];
+				if (category in globals.categoryGroups) {
+					globals.categoryGroups[category].style.fillColor = response[category]['color'];
+					globals.categoryGroups[category].style.strokeColor = response[category]['color'];
 				}
 				else {
-						category_groups[category] = new paper.Group({
+						globals.categoryGroups[category] = new paper.Group({
 							name: category,
 							strokeColor: response[category]['color'],
 							fillColor: response[category]['color'],
