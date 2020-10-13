@@ -18,7 +18,7 @@ ADD requirements.txt /code/
 RUN pip3.7 install -r requirements.txt
 RUN apt-get update
 RUN apt-get install -y dnsutils vim
-RUN apt-get install -y libgdal-dev gdal-bin python3-gdal libmagickwand-dev imagemagick inkscape postgresql-client-common postgresql-client
+RUN apt-get install -y libgdal-dev gdal-bin python3-gdal libmagickwand-dev imagemagick inkscape postgresql-client-common postgresql-client bs4
 RUN pip install --upgrade pip
 RUN pip3.7 install --upgrade pip
 
