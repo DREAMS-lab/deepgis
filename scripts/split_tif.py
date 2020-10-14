@@ -7,6 +7,10 @@ import sys
 def run():
     # in_path = '/home/harish/Downloads/crop/'
     # input_filename = 'SKI_20_clipped.tif'
+    if len(sys.argv) < 6:
+        print("python manage.py runscript split_tif cropped_image.tif webclient/static/dataset limit_value")
+        return
+
     file_extension = '.png'
 
     input_filename = sys.argv[3]
@@ -36,6 +40,7 @@ def run():
 
     print("\n\nSplitting-------------------------------------------------------------------------------\n\n")
     count = 0
+    count_limit = int(sys.argv[5])
 
     for i in range(0, xsize, tile_size_x):
 
@@ -59,11 +64,13 @@ def run():
             os.system(com_string)
             count += 1
             print("Tile : ", i, ",", j)
-            if count == 75:
+            if count == count_limit:
                 break
             merge_y = merge_y + tile_size_y
         merge_x = merge_x + tile_size_x
-        if count == 75:
+        if count == count_limit:
             break
 
+    com_string = "rm -rf " + out_path + "*.xml"
+    os.system(com_string)
     print("\n\nImage Tiling complete-------------------------------------------------------------------\n\n")

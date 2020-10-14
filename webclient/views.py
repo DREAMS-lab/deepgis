@@ -423,13 +423,13 @@ def getNewImage(request):
         ignore_max_count = False
         print(images)
 
-        categories_to_label = [settings.CATEGORY_TO_LABEL]
-        all_unfinished_images = images
-        for cat in categories_to_label:
-            print(cat)
-            images = all_unfinished_images.filter(categoryType__category_name=cat)
-            if images:
-                break
+        # categories_to_label = [settings.CATEGORY_TO_LABEL]
+        # all_unfinished_images = images
+        # for cat in categories_to_label:
+        #     print(cat)
+        #     images = all_unfinished_images.filter(categoryType__category_name=cat)
+        #     if images:
+        #         break
 
     images = images.order_by('count').reverse()
     print(images)
