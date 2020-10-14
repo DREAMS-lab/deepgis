@@ -27,7 +27,7 @@ foo@bar:~$ python manage.py createsuperuser
 If you have a .tif file, you can use the following command to split the tif into 750x750 png images.
 
 ```bash 
-foo@bar:~$ python manage.py runscript split_tifs cropped_image.tif webclient/static/dataset/
+foo@bar:~$ python manage.py runscript split_tif cropped_image.tif webclient/static/dataset/
 ```
 
 We have provided a few test images in `webclient/static/small-tomatoes` directory.
