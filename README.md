@@ -33,7 +33,7 @@ foo@bar:~$ python manage.py runscript split_tif cropped_image.tif webclient/stat
 We have provided a few test images in `webclient/static/small-tomatoes` directory.
 
 ```bash 
-foo@bar:~$ python manage.py runscript injectImages /app/webclient/static/small-tomatoes/
+foo@bar:~$ python manage.py runscript injectImages /app/webclient/static/small-tomatoes/ tomatoes tomatoes
 foo@bar:~$ python manage.py collectstatic
 ```
 
