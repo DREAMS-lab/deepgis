@@ -378,7 +378,8 @@
 
 			// Update view position.
 			view.center += (mousePosition - oldCenter) * (1 - (oldZoom / newZoom));
-
+		} else {
+			return true;
 		}
 	});
 
@@ -389,12 +390,6 @@
 
 	var $window = $(window), previousScrollTop = 0, scrollLock = false;
 
-	$window.scroll(function(event) {
-	    if ($('#canvas').is(':hover')) {
-			$window.scrollTop(previousScrollTop);
-		}
-		previousScrollTop = $window.scrollTop();
-	});
 
 	function onMouseDrag(event) {
 		var category = $('input[name=category_select]:checked', '#categories').val();
