@@ -90,7 +90,9 @@
 		$("#canvas").mousemove(function() {
 			var xLocation = event.pageX-canvasPosition.left-303;
 			var yLocation = event.pageY-canvasPosition.top-3;
-
+			if (globals.locationData.UpperLeft == undefined) {
+				return;
+			}
 			// calculate point in lat long scale
 			var y_point = globals.locationData.UpperLeft.Latitude + (((globals.locationData.LowerRight.Latitude - globals.locationData.UpperLeft.Latitude)*yLocation)/996)
 			var x_point = globals.locationData.UpperLeft.Longitude + (((globals.locationData.LowerRight.Longitude - globals.locationData.UpperLeft.Longitude)*xLocation)/996)
@@ -110,7 +112,7 @@
 
 			if(scaleX == scaleY)
 			{
-				scaleContent = "Scale: " + scaleX + " mm/px"
+				scaleContent = "Scale: " + scaleX + " m/px"
 			}
 			else {
 				scaleContent = "Scale: " + "x: " + scaleX + " m/px, y: "+ scaleY+" m/px";
@@ -583,11 +585,15 @@
 							$("#annotation_grid_body").append(`<tr data-row-id="${property}">
 							<td><input type="checkbox" id="${property}_input" class="sub_chk" data-id="${property}"></td>
 							<td id="${property}_parent_image">${content[property]["parent_image"]}</td>
+							<td id="${property}_labeler">${content[property]["labeler"]}</td>
 							<td id="${property}_width">${content[property]["width"]}</td>
 							<td id="${property}_height">${content[property]["height"]}</td>
 							<td id="${property}_padding_x">${content[property]["padding_x"]}</td>
 							<td id="${property}_padding_y">${content[property]["padding_y"]}</td>
 							<td id="${property}_timetaken">${content[property]["timetaken"]}</td>
+							<td id="${property}_number">
+								<a href="javascript:;" class="pop" onClick="modalShow(this)" src="/webclient/get_overlayed_combined_image/${content[property]["number"]}">Show</a>
+							</td>
 							</tr>`)
 						}
 					} else {
@@ -637,6 +643,7 @@
 				 				padding_x: $("#" + index.toString() + "_padding_x").text(),
 				 				padding_y: $("#" + index.toString() + "_padding_y").text(),
 				 				timetaken: $("#" + index.toString() + "_timetaken").text(),
+				 				user: $("#" + index.toString() + "_labeler").text(),
 				 				})
 			}
 		});
@@ -842,6 +849,12 @@
 		//window.labelsLayer.importJSON(JSON.parse(data));
 	}
 
+	function modalShow(elem) {
+			console.log($(elem).attr('src'));
+			$('.imagepreview').attr('src', $(elem).attr('src'));
+			$('#imagemodal').modal('show');
+	}
+
 	$('document').ready(function() {
 
 		//Canvas Controls
@@ -869,7 +882,9 @@
 			$('#contrastControl').val("1").trigger('input');
 			$('#saturationControl').val("1").trigger('input');
 		});
-
+		$('#imagemodal').on('hide.bs.modal', function (e) {
+			$('.imagepreview').attr('src', "");
+		});
 	});
 	</script>
 
@@ -920,7 +935,6 @@
 							Bezier
 						</label>
 					</li>
-
 				</ul>
 
 			<li data-toggle="collapse" data-target="#image_ops" class="collapsed active">
@@ -1039,11 +1053,13 @@
 						<tr>
 							<th><input type="checkbox" id="master"></th>
 							<th>File Name</th>
+							<th>Labeler</th>
 							<th>Width</th>
 							<th>Height</th>
 							<th>Cropped X coordinate</th>
 							<th>Cropped Y coordinate</th>
 							<th>Time Taken</th>
+							<th>Display</th>
 						</tr>
 					</thead>
 					<tbody id="annotation_grid_body">
@@ -1061,6 +1077,16 @@
 				<a class="pull-right" style="display: none;" id="googleColab" href="https://colab.research.google.com/gist/harishanand95/afff593d0c6492b185c0002256ff6521/mask-rcnn-deepgis.ipynb">
 				  <img src="https://colab.research.google.com/assets/colab-badge.svg" style="height: 35px;" alt="Open MaskRCNN In Colab"/>
 				</a>
+			</div>
+			<div class="modal fade" id="imagemodal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+			  <div class="modal-dialog">
+				<div class="modal-content">
+				  <div class="modal-body">
+					<button type="button" class="close" data-dismiss="modal" ><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+					<img src="" class="imagepreview" style="width: 100%;" >
+				  </div>
+				</div>
+			  </div>
 			</div>
 	</div>
 		<br><br>

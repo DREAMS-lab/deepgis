@@ -110,16 +110,14 @@ def createMasks(request):
             return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
         else:
             dict = json.load(request)
-            print(dict)
             labels = dict['labels']
             if (len(labels) == 0):
                 return JsonResponse({"status": "failure", "message": "No images selected"}, safe=False)
-            print(labels)
             _user = User.objects.filter(username=user)[0]
-            print(_user)
-            _labeler = Labeler.objects.filter(user=_user)[0]
             labels_db = []
             for label in labels:
+                _user = User.objects.filter(username=label["user"])[0]
+                _labeler = Labeler.objects.filter(user=_user)[0]
                 _image_window = ImageWindow.objects.filter(width=label["width"],
                                                            height=label["height"],
                                                            x=label["padding_x"],
@@ -130,6 +128,7 @@ def createMasks(request):
                                                       timeTaken=label["timetaken"],
                                                       imageWindow=_image_window
                                                       )
+                print(_label_db)
                 if len(_label_db) == 1:
                     labels_db.append(_label_db[0])
 
@@ -149,9 +148,13 @@ def display_annotations(request):
 
     _user = User.objects.filter(username=user)[0]
     _labeler = Labeler.objects.filter(user=_user)[0]
-    labels = ImageLabel.objects.filter(labeler=_labeler)
+    if _user.is_staff or _user.is_superuser:
+        labels = ImageLabel.objects.filter()
+    else:
+        labels = ImageLabel.objects.filter(labeler=_labeler)
     response = dict()
     count = 1
+
     for label in labels:
         response[count] = dict()
         response[count]["parent_image"] = label.parentImage.name
@@ -160,6 +163,8 @@ def display_annotations(request):
         response[count]["padding_x"] = label.imageWindow.x
         response[count]["padding_y"] = label.imageWindow.y
         response[count]["timetaken"] = label.timeTaken
+        response[count]["number"] = label.id
+        response[count]["labeler"] = str(label.labeler)
         count += 1
     output = {"status": "success"}
     output["message"] = response
@@ -693,25 +698,32 @@ def calculateEntropyMap(request):
 re_image_path = re.compile(r'/%s%s(.*)' % ('webclient', settings.STATIC_URL))
 
 
-@csrf_exempt
 @require_GET
 def get_overlayed_combined_image(request, image_label_id):
+    user = request.user
+    print(user)
+    if not user.is_authenticated:
+        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
     image_label = ImageLabel.objects.filter(id=image_label_id)
     if not image_label:
         return HttpResponseBadRequest('Bad image_label_id: ' + image_label_id)
     image_label = image_label[0]
-    image = image_label.parentImage
-    try:
-        blob = render_SVG_from_label(image_label)
-    except RuntimeError as e:
-        print(e, file=sys.stderr)
-        return HttpResponseServerError(str(e))
+    _user = User.objects.filter(username=user)[0]
+    if (str(user) == str(image_label.labeler)) or (_user.is_staff) or _user.is_superuser:
+        image = image_label.parentImage
+        try:
+            blob = render_SVG_from_label(image_label)
+        except RuntimeError as e:
+            print(e, file=sys.stderr)
+            return HttpResponseServerError(str(e))
 
-    # image with annotations has been saved as blob
-    foreground = PILImage.open(io.BytesIO(blob)).convert('RGBA')
-    output = io.BytesIO()
-    foreground.save(output, format='png')
-    return HttpResponse(output.getvalue(), content_type="image/png")
+        # image with annotations has been saved as blob
+        foreground = PILImage.open(io.BytesIO(blob)).convert('RGBA')
+        output = io.BytesIO()
+        foreground.save(output, format='png')
+        return HttpResponse(output.getvalue(), content_type="image/png")
+    else:
+        return HttpResponseBadRequest('Authentication error')
 
 
 @csrf_exempt
