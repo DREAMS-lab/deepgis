@@ -662,7 +662,7 @@
 					$('#generateDatasetPath').text(link);
 				} else {
 					console.log("Generate dataset failed!");
-					console.log(response.message);
+					showSnackBar(response.message);
 				}
 			}
 		});

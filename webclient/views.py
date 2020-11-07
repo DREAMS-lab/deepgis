@@ -32,7 +32,7 @@ from django.core import serializers
 
 from . import helper_ops
 from .image_ops.convert_images import image_label_string_to_SVG_string, render_SVG_from_label, \
-    image_labels_to_countable_npy, image_labels_to_countable_npy_with_labels
+    image_labels_to_countable_npy, image_labels_to_json_with_labels
 from webclient.image_ops import crop_images
 from .models import Color, CategoryType, ImageSourceType, Image, Labeler, ImageWindow, ImageLabel, CategoryLabel, \
     ImageFilter, TiledLabel, TileSet, Tile
@@ -132,7 +132,7 @@ def createMasks(request):
                 if len(_label_db) == 1:
                     labels_db.append(_label_db[0])
 
-            file_path = image_labels_to_countable_npy_with_labels(user, labels_db)
+            file_path = image_labels_to_json_with_labels(user, labels_db)
             file_path = file_path.replace("media-root", "media")
 
             return JsonResponse({"status": "success", "message": file_path}, safe=False)
@@ -147,11 +147,15 @@ def display_annotations(request):
         return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
 
     _user = User.objects.filter(username=user)[0]
-    _labeler = Labeler.objects.filter(user=_user)[0]
     if _user.is_staff or _user.is_superuser:
         labels = ImageLabel.objects.filter()
     else:
-        labels = ImageLabel.objects.filter(labeler=_labeler)
+        try:
+            labeler = Labeler.objects.get(user=user)
+        except Labeler.DoesNotExist:
+            labeler = Labeler(user=user)
+            labeler.save()
+        labels = ImageLabel.objects.filter(labeler=labeler)
     response = dict()
     count = 1
 
@@ -260,7 +264,7 @@ def applyLabels(request):
     #        parentImage_.save()
     #   else:
 
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    # x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     # if x_forwarded_for:
     #     #ipaddress = x_forwarded_for.split(',')[-1].strip()
     # else:

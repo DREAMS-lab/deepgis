@@ -16,6 +16,8 @@ from cairosvg import svg2png
 import shutil
 import string
 import random
+import json
+from bs4 import BeautifulSoup
 
 IMAGE_FILE_EXTENSION = '.png'
 
@@ -367,6 +369,79 @@ def image_labels_to_countable_npy_with_labels(user_name, labels):
     shutil.make_archive(base_folder_without_dataset + 'dataset', 'zip', base_folder)
     # delete the folder with images and labels
     shutil.rmtree(base_folder)
+    return base_folder_without_dataset + 'dataset.zip'
+
+
+def image_labels_to_json_with_labels(user_name, labels):
+    _user = User.objects.filter(username=user_name)[0]
+    user = str(_user.username)
+
+    ## Delete all previous contents
+    if os.path.exists(settings.MEDIA_ROOT + settings.LABEL_FOLDER_NAME + user):
+        shutil.rmtree(settings.MEDIA_ROOT + settings.LABEL_FOLDER_NAME + user)
+    base_folder = settings.MEDIA_ROOT + settings.LABEL_FOLDER_NAME + user + '/' + get_random_string() + '/dataset/'
+
+    for label in labels:
+        parent_image = label.parentImage
+        filename = '%s' % parent_image.name.replace('.JPG', '')
+        filename = '%s' % filename.replace('.PNG', '')
+        filename = '%s' % filename.replace('.jpg', '')
+        filename = '%s' % filename.replace('.png', '')
+
+
+        categorylabels = label.categorylabel_set.all()
+        height = label.imageWindow.height
+        width = label.imageWindow.width
+        padding_x = label.imageWindow.x
+        padding_y = label.imageWindow.y
+
+        # create cropped images
+        imagePath = re.search('ns1:href="(.*)png"', label.combined_labelShapes)
+        try:
+            imagePath = imagePath.group(1)+"png"
+        except AttributeError as e:
+            imagePath = re.search('a0:href="(.*)png"', label.combined_labelShapes)
+            imagePath = imagePath.group(1) + "png"
+
+        imagePath = settings.STATIC_ROOT + imagePath[imagePath.find("static/")+7:]
+        im = PILImage.open(imagePath)
+        crop_dimensions = (padding_x, padding_y, padding_x + width, padding_y + height)
+        im_crop = im.crop(crop_dimensions)
+
+        if not os.path.exists(base_folder + "images"):
+            os.makedirs(base_folder + "images")
+        if not os.path.exists(base_folder + "json"):
+            os.makedirs(base_folder + "json")
+
+        outputImageFilename = base_folder + "images/" + \
+                              filename + '_' + str(padding_x) + '_' + str(padding_y) + IMAGE_FILE_EXTENSION
+
+        im_crop.save(outputImageFilename, quality=95)
+
+        outputJsonFilename = base_folder + "json/" + \
+                              filename + '_' + str(padding_x) + '_' + str(padding_y) + ".json"
+        labels_json = {}
+        labels_json["labelShapes"] = []
+        labels_json["height"] = height
+        labels_json["width"] = width
+        soup = BeautifulSoup(label.combined_labelShapes)
+        g_container = soup.find_all('g', id="crater")[0]
+        labels_json["labelShapes"].append((1, str(g_container)))
+        # for cat_id, categorylabel in enumerate(categorylabels):
+        #     if str(categorylabel.categoryType.category_name) == "crater":
+
+
+        print(outputJsonFilename)
+        with open(outputJsonFilename, 'w') as fp:
+            json.dump(labels_json, fp)
+
+    base_folder_without_dataset = base_folder[:-8]
+
+    # create a zip file of the dataset GJztwIHydqfqZMWb
+    shutil.make_archive(base_folder_without_dataset + 'dataset', 'zip', base_folder)
+    # delete the folder with images and labels
+    shutil.rmtree(base_folder)
+    print(base_folder_without_dataset)
     return base_folder_without_dataset + 'dataset.zip'
 
 
