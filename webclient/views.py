@@ -103,41 +103,39 @@ def map_label(request):
 @require_POST
 @csrf_exempt
 def createMasks(request):
-    try:
-        user = request.user
-        print(user)
-        if not user.is_authenticated:
-            return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
-        else:
-            dict = json.load(request)
-            labels = dict['labels']
-            if (len(labels) == 0):
-                return JsonResponse({"status": "failure", "message": "No images selected"}, safe=False)
-            _user = User.objects.filter(username=user)[0]
-            labels_db = []
-            for label in labels:
-                _user = User.objects.filter(username=label["user"])[0]
-                _labeler = Labeler.objects.filter(user=_user)[0]
-                _image_window = ImageWindow.objects.filter(width=label["width"],
-                                                           height=label["height"],
-                                                           x=label["padding_x"],
-                                                           y=label["padding_y"])[0]
-                _image = Image.objects.filter(name=label["parent_image"])[0]
-                _label_db = ImageLabel.objects.filter(labeler=_labeler,
-                                                      parentImage=_image,
-                                                      timeTaken=label["timetaken"],
-                                                      imageWindow=_image_window
-                                                      )
-                print(_label_db)
-                if len(_label_db) == 1:
-                    labels_db.append(_label_db[0])
+    user = request.user
+    print(user)
+    if not user.is_authenticated:
+        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    else:
+        dict = json.load(request)
+        labels = dict['labels']
+        if (len(labels) == 0):
+            return JsonResponse({"status": "failure", "message": "No images selected"}, safe=False)
+        _user = User.objects.filter(username=user)[0]
+        labels_db = []
+        for label in labels:
+            _user = User.objects.filter(username=label["user"])[0]
+            _labeler = Labeler.objects.filter(user=_user)[0]
+            _image_window = ImageWindow.objects.filter(width=label["width"],
+                                                       height=label["height"],
+                                                       x=label["padding_x"],
+                                                       y=label["padding_y"])[0]
+            _image = Image.objects.filter(name=label["parent_image"])[0]
+            _label_db = ImageLabel.objects.filter(labeler=_labeler,
+                                                  parentImage=_image,
+                                                  timeTaken=label["timetaken"],
+                                                  imageWindow=_image_window
+                                                  )
+            print(_label_db)
+            if len(_label_db) == 1:
+                labels_db.append(_label_db[0])
 
-            file_path = image_labels_to_json_with_labels(user, labels_db)
-            file_path = file_path.replace("media-root", "media")
+        file_path = image_labels_to_json_with_labels(user, labels_db)
+        file_path = file_path.replace("media-root", "media")
 
-            return JsonResponse({"status": "success", "message": file_path}, safe=False)
-    except:
-        return JsonResponse({"status": "failure", "message": "Something failed"}, safe=False)
+        return JsonResponse({"status": "success", "message": file_path}, safe=False)
+
 
 
 @login_required

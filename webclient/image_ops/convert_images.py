@@ -421,15 +421,16 @@ def image_labels_to_json_with_labels(user_name, labels):
         outputJsonFilename = base_folder + "json/" + \
                               filename + '_' + str(padding_x) + '_' + str(padding_y) + ".json"
         labels_json = {}
-        labels_json["labelShapes"] = []
         labels_json["height"] = height
         labels_json["width"] = width
-        soup = BeautifulSoup(label.combined_labelShapes)
-        g_container = soup.find_all('g', id="crater")[0]
-        labels_json["labelShapes"].append((1, str(g_container)))
-        # for cat_id, categorylabel in enumerate(categorylabels):
-        #     if str(categorylabel.categoryType.category_name) == "crater":
+        labels_json["labelShapes"] = []
+        labels_json["categories"] = []
 
+        soup = BeautifulSoup(label.combined_labelShapes)
+        for category in CategoryType.objects.all():
+            labels_json["categories"].append(str(category.category_name))
+            g_container = soup.find_all('g', id=category.category_name)[0]
+            labels_json["labelShapes"].append((labels_json["categories"].index(str(category.category_name)), str(g_container)))
 
         print(outputJsonFilename)
         with open(outputJsonFilename, 'w') as fp:
