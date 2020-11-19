@@ -386,9 +386,7 @@
 	});
 
 	function resetZoom() {
-		view.zoom = 2;
-		globals.initialCenter._x = imageWidth/2;
-		globals.initialCenter._y = imageHeight/2;
+		view.zoom = 1;
 		view.setCenter(globals.initialCenter);
 	}
 	$('#resetCanvasZoom').click(resetZoom);
@@ -768,7 +766,7 @@
 			return;
 		}
 		padding = 0;
-		size = new paper.Size(2 * width + 2 * padding, 2 * height + 2 * padding);
+		size = new paper.Size(width + 2 * padding, height + 2 * padding);
 		//Add new image and resize canvas to fit image
 		img = new Image();
 		img.onload = function() {
@@ -809,11 +807,6 @@
 			globals.raster.id = "shifted image";
 			paper.view.update();
 			globals.initialCenter = paper.view.center;
-			paper.view.zoom = 2;
-			globals.initialCenter._x = imageWidth/2;
-			globals.initialCenter._y = imageHeight/2;
-			paper.view.setCenter(globals.initialCenter);
-
 		}
 		if (img.complete) {
 			setup_images();
@@ -1195,5 +1188,4 @@ function updateCategoryProperties() {
 </body>
 
 </html>
-
 

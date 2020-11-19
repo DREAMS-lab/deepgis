@@ -1,7 +1,7 @@
 from wand.image import Image as WandImage
 from wand.color import Color as WandColor
 import io
-from webclient.models import User, Labeler, Image, ImageLabel, CategoryLabel
+from webclient.models import User, Labeler, Image, ImageLabel, CategoryLabel, CategoryType
 from django.conf import settings
 import re
 import wand.exceptions
@@ -413,12 +413,12 @@ def image_labels_to_json_with_labels(user_name, labels):
         if not os.path.exists(base_folder + "json"):
             os.makedirs(base_folder + "json")
 
-        outputImageFilename = base_folder + "images/" + \
+        outputImageFilename = base_folder + "images/" + parent_image.path.replace("/", "_") + \
                               filename + '_' + str(padding_x) + '_' + str(padding_y) + IMAGE_FILE_EXTENSION
 
         im_crop.save(outputImageFilename, quality=95)
 
-        outputJsonFilename = base_folder + "json/" + \
+        outputJsonFilename = base_folder + "json/" + parent_image.path.replace("/", "_") + \
                               filename + '_' + str(padding_x) + '_' + str(padding_y) + ".json"
         labels_json = {}
         labels_json["height"] = height
