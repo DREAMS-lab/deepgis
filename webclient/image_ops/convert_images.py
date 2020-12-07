@@ -424,7 +424,7 @@ def image_labels_to_json_with_labels(user_name, labels):
         labels_json["height"] = height
         labels_json["width"] = width
         labels_json["labelShapes"] = []
-        labels_json["categories"] = []
+        labels_json["categories"] = ["background"]
 
         soup = BeautifulSoup(label.combined_labelShapes)
         for category in CategoryType.objects.all():
