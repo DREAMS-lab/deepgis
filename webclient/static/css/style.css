@@ -132,7 +132,7 @@ div #imageControl {
 }
 
 .logoutBtn {
-  position: fixed;
+  position: absolute;
   background-color: red;
   color: white;
   top: 10px;
