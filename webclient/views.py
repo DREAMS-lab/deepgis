@@ -17,6 +17,14 @@ import urllib.request, urllib.parse, urllib.error
 from io import StringIO
 from PIL import Image as PILImage
 import requests
+from bs4 import BeautifulSoup
+import torchvision
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
+from torchvision.models.detection.rpn import AnchorGenerator
+import torch
+from rasterio.features import shapes as Shapes
+from shapely.geometry import shape
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -49,6 +57,8 @@ import csv
 ######
 # PAGES
 ######
+model_selected = None
+
 
 @login_required
 def index(request):
@@ -130,13 +140,10 @@ def createMasks(request):
             print(_label_db)
             if len(_label_db) == 1:
                 labels_db.append(_label_db[0])
-
         file_path = image_labels_to_json_with_labels(user, labels_db)
         file_path = file_path.replace("media-root", "media")
 
         return JsonResponse({"status": "success", "message": file_path}, safe=False)
-
-
 
 @login_required
 def display_annotations(request):
@@ -172,6 +179,44 @@ def display_annotations(request):
     output["message"] = response
     return JsonResponse(output, safe=False)
 
+@csrf_exempt
+@login_required
+def select_models(request):
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    dict = json.load(request)
+    print(dict)
+    global model_selected
+    model_selected = "/app/models/" + dict["model_id"]
+    return JsonResponse({"status": "success", "message": "Model {} selected".format(dict["model_id"])}, safe=False)
+
+@login_required
+def display_models(request):
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+
+    _user = User.objects.filter(username=user)[0]
+    if _user.is_staff or _user.is_superuser:
+        labels = ImageLabel.objects.filter()
+    else:
+        try:
+            labeler = Labeler.objects.get(user=user)
+        except Labeler.DoesNotExist:
+            labeler = Labeler(user=user)
+            labeler.save()
+        labels = ImageLabel.objects.filter(labeler=labeler)
+    response = dict()
+    count = 1
+    files = os.listdir("/app/models")
+    for model_file in files:
+        response[count] = dict()
+        response[count]["file_name"] = str(model_file)
+        count += 1
+    output = {"status": "success"}
+    output["message"] = response
+    return JsonResponse(output, safe=False)
 
 ##################
 # POST/GET REQUESTS
@@ -392,6 +437,101 @@ def getImageMetadata(file):
     with open(file, 'r') as json_file:
         metadata = json.load(json_file)
     return metadata
+
+def get_model_instance_segmentation(num_classes, image_mean, image_std, stats=False):
+    # load an instance segmentation model pre-trained pre-trained on COCO
+
+    model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
+
+    # get number of input features for the classifier
+    in_features = model.roi_heads.box_predictor.cls_score.in_features
+    # replace the pre-trained head with a new one
+    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+
+    # the size shape and the aspect_ratios shape should be the same as the shape in the loaded model
+    anchor_generator = AnchorGenerator(sizes=((32,), (64,), (128,), (256,), (512,)),
+                                       aspect_ratios=((0.5, 1.0, 2.0), (0.5, 1.0, 2.0), (0.5, 1.0, 2.0), (0.5, 1.0, 2.0), (0.5, 1.0, 2.0)))
+    model.rpn.anchor_generator = anchor_generator
+
+    if stats:
+        model.transform.image_mean = image_mean
+        model.transform.image_std = image_std
+    # now get the number of input features for the mask classifier
+    in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
+    hidden_layer = 256
+    # and replace the mask predictor with a new one
+    model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
+                                                       hidden_layer,
+                                                       num_classes)
+    model.roi_heads.detections_per_img = 256
+
+    return model
+
+
+def get_masks(image_path):
+    global model_selected
+    if model_selected is None:
+        return {"status": "failure", "message": "Select a model to predict"}
+    print(image_path)
+    image = PILImage.open(image_path).convert("RGB")
+    image = np.array(image)
+    image = torch.from_numpy(image / 255.0).float()
+    image = image.permute((2, 0, 1))
+
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+    else:
+        device = torch.device('cpu')
+
+    num_classes = 2
+    image_mean = [0.34616187074865956, 0.34616187074865956, 0.34616187074865956]
+    image_std = [0.10754412766560431, 0.10754412766560431, 0.10754412766560431]
+
+    mask_rcnn = get_model_instance_segmentation(num_classes, image_mean, image_std, stats=True)
+    mask_rcnn.to(device)
+    mask_rcnn.eval()
+
+    model_path = model_selected
+    print("model_path " + str(model_path))
+    mask_rcnn.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+
+    pred = mask_rcnn(image.unsqueeze(0).to(device))[0]
+
+    boxes_ = pred["boxes"].cpu().detach().numpy().astype(int)
+    boxes = np.empty_like(boxes_)
+    boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3] = boxes_[:, 1], boxes_[:, 0], boxes_[:, 3], boxes_[:, 2]
+    labels = pred["labels"].cpu().detach().numpy()
+    scores = pred["scores"].cpu().detach().numpy()
+    masks = pred["masks"]
+    indices = scores > 0.5
+    # boxes = boxes[indices]
+    # labels = labels[indices]
+    # scores = scores[indices]
+    masks = masks[indices].squeeze(1)
+    masks = (masks.permute((1, 2, 0)).cpu().detach().numpy() > 0.5).astype(np.uint8)
+    return masks
+
+# function to return crater predictions
+@csrf_exempt
+@require_GET
+def getAnnotations(request):
+    # return a list of svg strings
+    image_path = request.GET['image_name']
+    masks = get_masks('/app/webclient' + image_path)
+    if "status" in masks:
+        return JsonResponse(masks, safe=False)
+    svg_strings = []
+    for i in range(masks.shape[2]):
+        mask = masks[:, :, i]
+        mask[mask == 0] = -9999
+        crater = mask == 1
+        shapes = Shapes(mask, mask=crater)
+        svg_string = shape(list(shapes)[0][0])._repr_svg_()
+        soup = BeautifulSoup(svg_string)
+        paths = soup.find_all('path')
+        svg_strings.append(paths[0].get('d'))
+    resp = {"status": "success", "message": svg_strings}
+    return JsonResponse(resp, safe=False)
 
 
 @require_GET

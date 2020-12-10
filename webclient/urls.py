@@ -34,8 +34,11 @@ urlpatterns = [
     path('createMasks', views.createMasks),
     path('loadLabels', views.loadLabels),
     path('displayAnnotations', views.display_annotations),
+    path('displayModels', views.display_models),
     #added the following path to implement annotation help on label app
     url(r'^getLOLACraterAnnotations/$', views.getLOLACraterAnnotations),
+    url(r'^getAnnotations/$', views.getAnnotations),
+    url(r'^selectModels', views.select_models),
     #path('fix_label_location', views.fix_label_location),
     path('print_label_data', views.print_label_data),
     url(r'^get_overlayed_combined_image/(?P<image_label_id>[0-9]*)$', views.get_overlayed_combined_image),

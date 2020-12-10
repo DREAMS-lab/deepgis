@@ -30,6 +30,7 @@
 	globals.categoryShapes = {};
 	globals.initialCenter = {};
 	globals.panStep = 1;
+	globals.AnnotationsDrawn = false;
 	var labelsLayer = new paper.Layer();
 
 	var create_groups_shapes = function(categories, colors, shapes) {
@@ -200,6 +201,7 @@
 				}),
 				success: function(data) {
 					showSnackBar("New image");
+					globals.AnnotationsDrawn = false;
 					if (window.labelsLayer.hasChildren()) {
 						window.labelsLayer.removeChildren();
 					}
@@ -385,11 +387,10 @@
 		}
 	});
 
-	function resetZoom() {
+	$('#resetCanvasZoom').click(function() {
 		view.zoom = 1;
 		view.setCenter(globals.initialCenter);
-	}
-	$('#resetCanvasZoom').click(resetZoom);
+	});
 
 	var $window = $(window), previousScrollTop = 0, scrollLock = false;
 
@@ -581,6 +582,18 @@
 				success: function(response) {
 					if (response.status == "success") {
 						$("#annotation_grid_body").empty();
+						$("#annotation_grid_head").empty();
+						$("#annotation_grid_head").append(`<tr>
+							<th><input type="checkbox" id="master"></th>
+							<th>File Name</th>
+							<th>Labeler</th>
+							<th>Width</th>
+							<th>Height</th>
+							<th>Cropped X coordinate</th>
+							<th>Cropped Y coordinate</th>
+							<th>Time Taken</th>
+							<th>Display</th>
+						</tr>`)
 						var content = response.message;
 						for (const property in content) {
 							$("#annotation_grid_body").append(`<tr data-row-id="${property}">
@@ -630,6 +643,71 @@
 				}
 			});
 	};
+
+	function selectModel() {
+			$('#debug').hide();
+			$('#controls').hide();
+			$('#displayTable').hide();
+			$('#image_info').hide();
+			$('#undo').hide();
+			$('#applyLabels').hide();
+			$('#noLabelsList').hide();
+			$('#user_annotations').show();
+			$('#continueAnnotations').show();
+			$('#generateDatasetPath').show()
+
+			$.ajax({
+				url: "/webclient/displayModels",
+				type: "GET",
+				dataType: "json",
+				data: {},
+				success: function(response) {
+					if (response.status == "success") {
+						$("#annotation_grid_body").empty();
+						$("#annotation_grid_head").empty();
+						$("#annotation_grid_head").append(`<tr>
+							<th>File Name</th>
+							<th>Select Model</th>
+						</tr>`)
+						var content = response.message;
+						for (const property in content) {
+							$("#annotation_grid_body").append(`<tr data-row-id="${property}">
+							<td id="${property}_parent_image">${content[property]["file_name"]}</td>
+							<td id="${property}_number">
+								<a href="javascript:;" class="pop" onClick="selectModelOption(this)" src="${content[property]["file_name"]}">Select</a>
+							</td>
+							</tr>`)
+						}
+					} else {
+						alert(response.message);
+						$('#debug').show();
+						$('#controls').show();
+						$('#displayTable').show();
+						$('#image_info').show();
+						$('#undo').show();
+						$('#applyLabels').show();
+						$('#noLabelsList').show();
+						$('#user_annotations').hide();
+						$('#continueAnnotations').hide();
+						$('#generateDatasetPath').hide()
+					}
+				},
+				error: function(xhr, errmsg, err) {
+					console.log("Access to annotations failed");
+					$('#debug').show();
+					$('#controls').show();
+					$('#displayTable').show();
+					$('#image_info').show();
+					$('#undo').show();
+					$('#applyLabels').show();
+					$('#noLabelsList').show();
+					$('#user_annotations').hide();
+					$('#continueAnnotations').hide();
+					$('#generateDatasetPath').hide()
+				}
+			});
+	};
+
 
 	function generateDataset() {
 		$("#generateDatasetSpinner").show();
@@ -688,6 +766,88 @@
 	function panLeft(){
         labelsLayer.view.setCenter(labelsLayer.view.center.x - globals.panStep, labelsLayer.view.center.y);
 	}
+
+	function getAnnotations() {
+		$.ajax({
+			url: "/webclient/getAnnotations/",
+			type: "GET",
+			dataType: "json",
+			data: {
+				image_name: currentImage.path + currentImage.image_name,
+			},
+			success: function(response) {
+				if(response.status == "failure") {
+					showSnackBar(response.message);
+				} else {
+					globals.Annotations = response.message;
+					drawAnnotations();
+				}
+			},
+			error: function(xhr, errmsg, err) {
+				alert(xhr.status + ": " + xhr.responseText);
+			}
+		});
+	}
+
+	// function to draw LOLA Annotations on the canvas
+	function drawAnnotations()
+	{
+		if(globals.AnnotationsDrawn == false)
+		{
+			globals.AnnotationsDrawn = true;
+			for(i = 0; i < globals.Annotations.length; i++)
+			{
+				var pathData = globals.Annotations[i];
+				window.circlePath = new paper.Path(pathData);
+				//window.circlePath.smooth();
+				var category = $('input[name=category_select]:checked', '#categories').val();
+				var shape = globals.categoryShapes[category];
+
+				globals.labelsDrawn += 1;
+				globals.categoryGroups[category].addChild(window.circlePath);
+				window.circlePath.style = globals.categoryGroups[category].style;
+				window.circlePath.opacity = globals.categoryGroups[category].opacity;
+				globals.isActive = false;
+
+				window.circlePath.onMouseEnter = function(event)
+				{
+					if (!globals.isActive)
+					{
+						globals.aboveExistingLabel = true;
+						this.opacity = 1;
+						window.circlePath = this;
+					}
+				};
+
+				window.circlePath.onMouseLeave = function(event)
+				{
+					globals.aboveExistingLabel = false;
+					mode = null;
+					this.style = globals.categoryGroups[category].style;
+					this.opacity = globals.categoryGroups[category].opacity;
+				};
+
+				window.circlePath.onDoubleClick = function(event)
+				{
+					globals.isActive = false;
+					globals.aboveExistingLabel = false;
+					this.remove();
+					path = null;
+					globals.labelsDrawn -= 1;
+				};
+			}
+			if(data.length==1)
+				showSnackBar(globals.Annotations.length + " Annotation was added");
+			else
+				showSnackBar(globals.Annotations.length + " Annotations were added");
+		} else {
+			if(globals.Annotations.length==0)
+				showSnackBar("No Annotations were found");
+			else
+				showSnackBar("Annotations were already added");
+		}
+	}
+
 
 	// function to calculate pixel point from latlon
 	function getPointFromLatLon(lat, lon)
@@ -851,9 +1011,26 @@
 	}
 
 	function modalShow(elem) {
-			console.log($(elem).attr('src'));
-			$('.imagepreview').attr('src', $(elem).attr('src'));
-			$('#imagemodal').modal('show');
+		console.log($(elem).attr('src'));
+		$('.imagepreview').attr('src', $(elem).attr('src'));
+		$('#imagemodal').modal('show');
+	}
+
+	function selectModelOption(elem) {
+		console.log($(elem).attr('src'));
+		$.ajax({
+			url: "/webclient/selectModels",
+			type: "POST",
+			dataType: "json",
+			data: JSON.stringify({"model_id" : $(elem).attr('src')}),
+			success: function(response) {
+				if (response.status == "success") {
+					showSnackBar(response.message);
+				} else {
+					console.log("Model selection failed!");
+				}
+			}
+		});
 	}
 
 	$('document').ready(function() {
@@ -962,10 +1139,21 @@
 				</li>
 				<button type="button" title="reset all image filters" id="resetImageControl" class="btn btn-warning btn-sm"><i class="fa fa-refresh"></i>Reset</button>
 			</ul>
+			<li data-toggle="collapse" data-target="#image_predictions" class="collapsed active">
+				<p class="bold"><i class="fa fa-adjust bold" aria-hidden="true"></i> Predict using AI<span class="arrow"></span></p>
+			</li>
+			<ul class="sidebar-nav2 sub-menu collapse show" id="image_predictions">
+				<li>
+					<button type="button" id="getAnnotationsButton" class="btn btn-success btn-sm" onclick="getAnnotations()" title="AI predictions">AI Predictions</button>
+				</li>
+				<li>
+					<button type="button" id="selectModel" class="btn btn-outline-primary btn-sm" onclick="selectModel()" title="Select Model"><i class="fa fa-tags"></i>Select Model</button>
+				</li>
+			</ul>
 			<li data-toggle="collapse" data-target="#deep_learning_zoo" class="collapsed active">
 				<p class="bold"><i class="fa fa-graduation-cap bold" aria-hidden="true"></i>Deep Learning Zoo<span class="arrow"></span></p>
 			</li>
-			<ul class="sidebar-nav2 sub-menu collapse" id="deep_learning_zoo">
+			<ul class="sidebar-nav2 sub-menu collapse show" id="deep_learning_zoo">
 				<li>
 					<button id="maskRCNN" title="Mask RCNN" type="button" onclick="startMaskRCNN()" class="btn btn-outline-primary btn-sm">Mask RCNN</button>
 				</li>
@@ -1050,7 +1238,7 @@
 				<br>
 				<br>
 				<table id="annotation_grid" class="table table-sm table-hover table-striped bootgrid-table" cellspacing="0">
-					<thead>
+					<thead id="annotation_grid_head">
 						<tr>
 							<th><input type="checkbox" id="master"></th>
 							<th>File Name</th>
@@ -1075,7 +1263,7 @@
 				<br>
 				<label id="generateDatasetPath"  style="display: none;padding-left: 10px;"></label>
 
-				<a class="pull-right" style="display: none;" id="googleColab" href="https://colab.research.google.com/gist/harishanand95/afff593d0c6492b185c0002256ff6521/mask-rcnn-deepgis.ipynb">
+				<a class="pull-right" style="display: none;" id="googleColab" href="https://colab.research.google.com/github/DREAMS-lab/DeepGIS_deeplearning_zoo/blob/master/mask_rcnn_training_DeepGIS.ipynb">
 				  <img src="https://colab.research.google.com/assets/colab-badge.svg" style="height: 35px;" alt="Open MaskRCNN In Colab"/>
 				</a>
 			</div>
