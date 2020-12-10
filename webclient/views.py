@@ -511,7 +511,7 @@ def get_masks(image_path):
     masks = (masks.permute((1, 2, 0)).cpu().detach().numpy() > 0.5).astype(np.uint8)
     return masks
 
-# function to return crater predictions
+# function to return AI predictions
 @csrf_exempt
 @require_GET
 def getAnnotations(request):
@@ -521,15 +521,17 @@ def getAnnotations(request):
     if "status" in masks:
         return JsonResponse(masks, safe=False)
     svg_strings = []
-    for i in range(masks.shape[2]):
-        mask = masks[:, :, i]
-        mask[mask == 0] = -9999
-        crater = mask == 1
-        shapes = Shapes(mask, mask=crater)
-        svg_string = shape(list(shapes)[0][0])._repr_svg_()
-        soup = BeautifulSoup(svg_string)
-        paths = soup.find_all('path')
-        svg_strings.append(paths[0].get('d'))
+    categories = [str(category.category_name) for category in CategoryType.objects.all()]
+    for id, category in enumerate(categories):
+        for i in range(masks.shape[2]):
+            mask = masks[:, :, i]
+            mask[mask == 0] = -9999
+            prediction = mask == id+1
+            shapes = Shapes(mask, mask=prediction)
+            svg_string = shape(list(shapes)[0][0])._repr_svg_()
+            soup = BeautifulSoup(svg_string)
+            paths = soup.find_all('path')
+            svg_strings.append(paths[0].get('d'))
     resp = {"status": "success", "message": svg_strings}
     return JsonResponse(resp, safe=False)
 
