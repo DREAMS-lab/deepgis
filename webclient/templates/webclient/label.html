@@ -774,6 +774,10 @@
 			dataType: "json",
 			data: {
 				image_name: currentImage.path + currentImage.image_name,
+				x: imageX,
+				y: imageY,
+				width: imageWidth,
+				height: imageHeight,
 			},
 			success: function(response) {
 				if(response.status == "failure") {
@@ -797,15 +801,13 @@
 			globals.AnnotationsDrawn = true;
 			for(i = 0; i < globals.Annotations.length; i++)
 			{
-				var pathData = globals.Annotations[i];
+				var pathData = globals.Annotations[i][0];
 				window.circlePath = new paper.Path(pathData);
-				//window.circlePath.smooth();
-				var category = $('input[name=category_select]:checked', '#categories').val();
-				var shape = globals.categoryShapes[category];
-
+				var category = globals.Annotations[i][1];
 				globals.labelsDrawn += 1;
 				globals.categoryGroups[category].addChild(window.circlePath);
 				window.circlePath.style = globals.categoryGroups[category].style;
+				console.log(window.circlePath.style);
 				window.circlePath.opacity = globals.categoryGroups[category].opacity;
 				globals.isActive = false;
 
@@ -823,7 +825,6 @@
 				{
 					globals.aboveExistingLabel = false;
 					mode = null;
-					this.style = globals.categoryGroups[category].style;
 					this.opacity = globals.categoryGroups[category].opacity;
 				};
 

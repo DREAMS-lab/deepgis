@@ -468,13 +468,13 @@ def get_model_instance_segmentation(num_classes, image_mean, image_std, stats=Fa
     return model
 
 
-def get_masks(image_path):
+def get_masks(image_path, x, y, width, height):
     global model_selected
     if model_selected is None:
         return {"status": "failure", "message": "Select a model to predict"}
-    print(image_path)
     image = PILImage.open(image_path).convert("RGB")
     image = np.array(image)
+    image = image[x:x+height, y:y+width]
     image = torch.from_numpy(image / 255.0).float()
     image = image.permute((2, 0, 1))
 
@@ -483,7 +483,7 @@ def get_masks(image_path):
     else:
         device = torch.device('cpu')
 
-    num_classes = 2
+    num_classes = len(CategoryType.objects.all()) + 1
     image_mean = [0.34616187074865956, 0.34616187074865956, 0.34616187074865956]
     image_std = [0.10754412766560431, 0.10754412766560431, 0.10754412766560431]
 
@@ -503,13 +503,13 @@ def get_masks(image_path):
     labels = pred["labels"].cpu().detach().numpy()
     scores = pred["scores"].cpu().detach().numpy()
     masks = pred["masks"]
-    indices = scores > 0.5
-    # boxes = boxes[indices]
-    # labels = labels[indices]
-    # scores = scores[indices]
+    indices = scores > 0.7
+    labels = labels[indices]
+    print(labels)
     masks = masks[indices].squeeze(1)
     masks = (masks.permute((1, 2, 0)).cpu().detach().numpy() > 0.5).astype(np.uint8)
-    return masks
+    masks = masks * labels
+    return masks, labels
 
 # function to return AI predictions
 @csrf_exempt
@@ -517,21 +517,35 @@ def get_masks(image_path):
 def getAnnotations(request):
     # return a list of svg strings
     image_path = request.GET['image_name']
-    masks = get_masks('/app/webclient' + image_path)
+    x = request.GET['x']
+    y = request.GET['y']
+    width = request.GET['width']
+    height = request.GET['height']
+    masks, labels = get_masks('/app/webclient' + image_path, int(x), int(y), int(width), int(height))
     if "status" in masks:
         return JsonResponse(masks, safe=False)
     svg_strings = []
-    categories = [str(category.category_name) for category in CategoryType.objects.all()]
+    categories = ["background"]
+    for category in CategoryType.objects.all():
+        categories.append(str(category.category_name))
+    # TODO: categories order might be different from what order it was trained. So its important to confirm
+    #  that here manually so that the labels are correct to AI predictions
     for id, category in enumerate(categories):
+        if id == 0: # skip background
+            continue
         for i in range(masks.shape[2]):
             mask = masks[:, :, i]
             mask[mask == 0] = -9999
-            prediction = mask == id+1
+            prediction = mask == id
+            mask[mask == id] = 1
+            mask = mask.astype(np.int16, copy=False)
             shapes = Shapes(mask, mask=prediction)
-            svg_string = shape(list(shapes)[0][0])._repr_svg_()
-            soup = BeautifulSoup(svg_string)
-            paths = soup.find_all('path')
-            svg_strings.append(paths[0].get('d'))
+            s = list(shapes)
+            if len(s) > 0 and len(s[0]) > 0:
+                svg_string = shape(s[0][0])._repr_svg_()
+                soup = BeautifulSoup(svg_string)
+                paths = soup.find_all('path')
+                svg_strings.append((paths[0].get('d'), category))
     resp = {"status": "success", "message": svg_strings}
     return JsonResponse(resp, safe=False)
 
