@@ -175,6 +175,13 @@ def display_annotations(request):
         response[count]["padding_x"] = label.imageWindow.x
         response[count]["padding_y"] = label.imageWindow.y
         response[count]["timetaken"] = label.timeTaken
+        soup = BeautifulSoup(label.combined_labelShapes)
+        circles = soup.find_all('circle')
+        poly = soup.find_all('polygon')
+        paths = soup.find_all('path')
+        ellipse = soup.find_all('ellipse')
+        shapes = paths + poly + circles + ellipse
+        response[count]["labelcount"] = len(shapes)
         response[count]["number"] = label.id
         response[count]["labeler"] = str(label.labeler)
         count += 1

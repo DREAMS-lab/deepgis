@@ -31,6 +31,7 @@
 	globals.initialCenter = {};
 	globals.panStep = 1;
 	globals.AnnotationsDrawn = false;
+	globals.Annotations = [];
 	var labelsLayer = new paper.Layer();
 
 	var create_groups_shapes = function(categories, colors, shapes) {
@@ -592,6 +593,7 @@
 							<th>Cropped X coordinate</th>
 							<th>Cropped Y coordinate</th>
 							<th>Time Taken</th>
+							<th>Label Count</th>
 							<th>Display</th>
 						</tr>`)
 						var content = response.message;
@@ -605,6 +607,7 @@
 							<td id="${property}_padding_x">${content[property]["padding_x"]}</td>
 							<td id="${property}_padding_y">${content[property]["padding_y"]}</td>
 							<td id="${property}_timetaken">${content[property]["timetaken"]}</td>
+							<td id="${property}_labelcount">${content[property]["labelcount"]}</td>
 							<td id="${property}_number">
 								<a href="javascript:;" class="pop" onClick="modalShow(this)" src="/webclient/get_overlayed_combined_image/${content[property]["number"]}">Show</a>
 							</td>
