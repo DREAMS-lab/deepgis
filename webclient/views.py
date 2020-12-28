@@ -131,7 +131,10 @@ def createMasks(request):
                                                        height=label["height"],
                                                        x=label["padding_x"],
                                                        y=label["padding_y"])[0]
-            _image = Image.objects.filter(name=label["parent_image"])[0]
+            _s = label["parent_image"].split("/")
+            _parent_image_name = _s[-1]
+            _parent_image_path = "/".join(_s[:-1]) + "/"
+            _image = Image.objects.filter(name=_parent_image_name, path=_parent_image_path)[0]
             _label_db = ImageLabel.objects.filter(labeler=_labeler,
                                                   parentImage=_image,
                                                   timeTaken=label["timetaken"],
@@ -166,7 +169,7 @@ def display_annotations(request):
 
     for label in labels:
         response[count] = dict()
-        response[count]["parent_image"] = label.parentImage.name
+        response[count]["parent_image"] = label.parentImage.path + label.parentImage.name
         response[count]["height"] = label.imageWindow.height
         response[count]["width"] = label.imageWindow.width
         response[count]["padding_x"] = label.imageWindow.x
@@ -503,9 +506,10 @@ def get_masks(image_path, x, y, width, height):
     labels = pred["labels"].cpu().detach().numpy()
     scores = pred["scores"].cpu().detach().numpy()
     masks = pred["masks"]
-    indices = scores > 0.7
+    indices = scores > 0.9
     labels = labels[indices]
     print(labels)
+    scores = scores[indices]
     masks = masks[indices].squeeze(1)
     masks = (masks.permute((1, 2, 0)).cpu().detach().numpy() > 0.5).astype(np.uint8)
     masks = masks * labels
@@ -528,8 +532,6 @@ def getAnnotations(request):
     categories = ["background"]
     for category in CategoryType.objects.all():
         categories.append(str(category.category_name))
-    # TODO: categories order might be different from what order it was trained. So its important to confirm
-    #  that here manually so that the labels are correct to AI predictions
     for id, category in enumerate(categories):
         if id == 0: # skip background
             continue
