@@ -414,12 +414,12 @@ def image_labels_to_json_with_labels(user_name, labels):
             os.makedirs(base_folder + "json")
 
         outputImageFilename = base_folder + "images/" + parent_image.path.replace("/", "_") + \
-                              filename + '_' + str(padding_x) + '_' + str(padding_y) + IMAGE_FILE_EXTENSION
+                              filename + '_' + str(padding_x) + '_' + str(padding_y) + str(label.id) + IMAGE_FILE_EXTENSION
 
         im_crop.save(outputImageFilename, quality=95)
 
         outputJsonFilename = base_folder + "json/" + parent_image.path.replace("/", "_") + \
-                              filename + '_' + str(padding_x) + '_' + str(padding_y) + ".json"
+                              filename + '_' + str(padding_x) + '_' + str(padding_y) + str(label.id) + ".json"
         labels_json = {}
         labels_json["height"] = height
         labels_json["width"] = width
@@ -429,8 +429,9 @@ def image_labels_to_json_with_labels(user_name, labels):
         soup = BeautifulSoup(label.combined_labelShapes)
         for category in CategoryType.objects.all():
             labels_json["categories"].append(str(category.category_name))
-            g_container = soup.find_all('g', id=category.category_name)[0]
-            labels_json["labelShapes"].append((labels_json["categories"].index(str(category.category_name)), str(g_container)))
+            container = soup.find_all('g', id=category.category_name)
+            if len(container) > 0:
+                labels_json["labelShapes"].append((labels_json["categories"].index(str(category.category_name)), str(container[0])))
 
         print(outputJsonFilename)
         with open(outputJsonFilename, 'w') as fp:
