@@ -39,13 +39,13 @@ from django.views.decorators.http import require_POST, require_GET
 from django.core import serializers
 
 from . import helper_ops
-from .image_ops.convert_images import image_label_string_to_SVG_string, render_SVG_from_label, \
-    image_labels_to_countable_npy, image_labels_to_json_with_labels
+from .image_ops.convert_images import convert_image_label_string_to_svg_string, convert_label_to_image_stream, \
+    get_numpy_masks_of_a_user, convert_image_labels_to_json, convert_image_labels_to_svg_array
 from webclient.image_ops import crop_images
 from .models import Color, CategoryType, ImageSourceType, Image, Labeler, ImageWindow, ImageLabel, CategoryLabel, \
     ImageFilter, TiledLabel, TileSet, Tile
 from . import models
-from webclient.image_ops.convert_images import convert_image_label_to_SVG
+from webclient.image_ops.convert_images import convert_image_label_to_svg
 
 import csv
 import base64
@@ -143,7 +143,7 @@ def createMasks(request):
             print(_label_db)
             if len(_label_db) == 1:
                 labels_db.append(_label_db[0])
-        file_path = image_labels_to_json_with_labels(user, labels_db)
+        file_path = convert_image_labels_to_json(user, labels_db)
         file_path = file_path.replace("media-root", "media")
 
         return JsonResponse({"status": "success", "message": file_path}, safe=False)
@@ -237,7 +237,7 @@ def applyLabels(request):
 
         dict = json.load(request)
     #        print("-------------------=========-")
-    #        image_labels_to_countable_npy()
+    #        get_numpy_masks_of_a_user()
     except json.JSONDecodeError:
         print("Could not decode")
         return HttpResponseBadRequest("Could not decode JSON")
@@ -307,10 +307,10 @@ def applyLabels(request):
                                        labeler=labeler)
         image_filter_obj.save()
 
-        # convert_image_label_to_SVG(labelObject)
-        # convert_category_label_to_SVG(category_label)
+        # convert_image_label_to_svg(labelObject)
+        # convert_category_label_to_svg(category_label)
     #
-    # convert_image_label_to_SVG(labelObject)
+    # convert_image_label_to_svg(labelObject)
 
     #    if not parentImage_:
     #        parentImage_ = Image(name=image_name, path = '/static/tag_images/', description = "development test", source = sourceType, pub_date=datetime.now())
@@ -323,7 +323,7 @@ def applyLabels(request):
     # else:
     #     #ipaddress = request.META.get('REMOTE_ADDR')
 
-    # combineImageLabels(parentImage_[0], 50)
+    # combine_image_labels(parentImage_[0], 50)
     return HttpResponse(label_list_)
 
 
@@ -819,8 +819,7 @@ def updateImage(request):
 @csrf_exempt
 @require_POST
 def convertAll(request):
-    from webclient.image_ops.convert_images import convertAll
-    convertAll(request.POST.get('reconvert', False))
+    convert_image_labels_to_svg_array(ImageLabel.objects.all())
     return HttpResponse('Ok')
 
 
@@ -843,10 +842,10 @@ def numImageLabels(request):
 @require_POST
 def combineAllImages(request):
     thresholdPercent = int(request.POST.get('thresholdPercent', 50))
-    from webclient.image_ops.convert_images import combineAllLabels
+    from webclient.image_ops.convert_images import combine_all_labels
     # for img in Image.objects.all():
-    #    combineImageLabels(img, thresholdPercent)
-    combineAllLabels(thresholdPercent)
+    #    combine_image_labels(img, thresholdPercent)
+    combine_all_labels(thresholdPercent)
     return HttpResponse("OK")
 
 
@@ -879,7 +878,7 @@ def get_overlayed_combined_image(request, image_label_id):
     if (str(user) == str(image_label.labeler)) or (_user.is_staff) or _user.is_superuser:
         image = image_label.parentImage
         try:
-            blob = render_SVG_from_label(image_label)
+            blob = convert_label_to_image_stream(image_label)
         except RuntimeError as e:
             print(e, file=sys.stderr)
             return HttpResponseServerError(str(e))
@@ -902,7 +901,7 @@ def get_overlayed_category_image(request, category_label_id):
     category_label = category_label[0]
     image = category_label.parent_label.parentImage
     try:
-        blob = render_SVG_from_label(category_label)
+        blob = convert_label_to_image_stream(category_label)
     except RuntimeError as e:
         print(e, file=sys.stderr)
         return HttpResponseServerError(str(e))

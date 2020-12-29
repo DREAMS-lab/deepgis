@@ -17,12 +17,12 @@ def calculate_entropy_map(image, category):
     #aggregrate_array = numpy.full((241,386, len(images)), 255, dtype=numpy.uint8)
     aggregrate_array = [[[] for y in range(386)] for x in range(241)]
     for i, label in enumerate(images):
-        #npImg = numpy.array(convert_images.getLabelImagePILFile(label), copy=True)
+        #npImg = numpy.array(convert_images.get_label_pillow_image(label), copy=True)
 
         #if npImg is None or npImg.shape != aggregrate_array[:,:,i].shape:
         #    continue
-        #print numpy.array(convert_images.getLabelImagePILFile(label))
-        imgList = numpy.asarray(convert_images.getLabelImagePILFile(label)).tolist()
+        #print numpy.array(convert_images.get_label_pillow_image(label))
+        imgList = numpy.asarray(convert_images.get_label_pillow_image(label)).tolist()
         if not imgList and not imgList[0]:
             return
 

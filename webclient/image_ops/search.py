@@ -20,7 +20,7 @@ def reflect(labelList = [ImageLabel.objects.all().last()]):
 
 def labels(label):
     npArray = []
-    separatedPaths = convert_images.separatePaths(label.labelShapes)
+    separatedPaths = convert_images.convert_svg_to_array_of_vector_images(label.labelShapes)
     if len(separatedPaths) > 0:
         imgLabel = plt.imread(StringIO(separatedPaths[0]))
         npArray = np.array(svgStringToXML(label))
@@ -97,7 +97,7 @@ def trainingsPatchForLabel(label):
     width = imageWindow.width
     height = imageWindow.height 
     croppedImage = imageParent[y-20:(y+height+20),x-20:(x+width+20),:]
-    labelImage = convert_images.countableLabel(label.labelShapes)
+    labelImage = convert_images.convert_svg_string_to_numpy_masks(label.labelShapes)
     croppedLabelImage = labelImage[y-20:(y+height+20),x-20:(x+width+20)]
     return croppedImage,croppedLabelImage
 

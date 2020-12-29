@@ -13,14 +13,14 @@ from webclient.image_ops import crop_images
 
 IMAGE_FILE_EXTENSION = '.png'
 
-def getLabelImagePILFile(label):
+def get_label_pillow_image(label):
     #foldername = settings.STATIC_ROOT +  settings.LABEL_FOLDER_NAME + '/' + label.categoryType.category_name + '/'
     #filename = labelFilename(label) + IMAGE_FILE_EXTENSION
     #if not os.path.exists(foldername + filename):
     #    return None
-    return PILImage.fromarray(countableLabel(label.labelShapes))#.convert("L")
+    return PILImage.fromarray(convert_svg_string_to_numpy_masks(label.labelShapes))#.convert("L")
 
-def getAverageLabelImagePILFile(image, category, threshold):
+def get_average_label_pillow_images(image, category, threshold):
     foldername = category.category_name + '/Threshold_' + str(threshold) + '/'
     imagename = "P%iC%sI%s.png" % (image.id, category.category_name, image.name)
     filename = foldername + imagename
@@ -28,7 +28,7 @@ def getAverageLabelImagePILFile(image, category, threshold):
         return None
     return PILImage.open(filename)
 
-def convertSVGtoPNG(img_file, foldername, filename, reconvert=False):
+def convert_svg_to_png(img_file, foldername, filename, reconvert=False):
     #Convert copy of image to new format
     #print(img_file.getvalue())
     if not img_file:
@@ -44,7 +44,7 @@ def convertSVGtoPNG(img_file, foldername, filename, reconvert=False):
     if not reconvert and os.path.exists(settings.STATIC_ROOT +  settings.LABEL_FOLDER_NAME + foldername + '/' + filename + '.png'):
          return settings.STATIC_ROOT +  settings.LABEL_FOLDER_NAME + foldername + '/' + filename + IMAGE_FILE_EXTENSION
     try:
-        #svgs = separatePaths(img_file)
+        #svgs = convert_svg_to_array_of_vector_images(img_file)
         with WandImage(file=img_file) as img:
             #img.depth = 1
             #img.colorspace = 'gray'
@@ -77,7 +77,7 @@ def convertSVGtoPNG(img_file, foldername, filename, reconvert=False):
     except wand.exceptions.WandError as e:
         print('Failed to convert ' + filename + ': '+ str(e))
 
-def SVGStringToImageBlob(svg):
+def convert_svg_to_image_stream(svg):
     if not svg:
         return
     svgFile = StringIO.StringIO(svg)
@@ -112,16 +112,16 @@ def RenderSVGString(svg):
     except wand.exceptions.WandError as e:
         print('Failed to convert ' + svg + ': ' + str(e))
 #Returns array of SVGs each with 1 path
-def separatePaths(svg):
+def convert_svg_to_array_of_vector_images(svg):
     #rePath = r'(<path[^/>]*/>)'
     paths = re.findall(SVGRegex.rePath, svg) + re.findall(SVGRegex.reCircle, svg)
-    image, height, width = SVGDimensions(svg)
+    image, height, width = get_svg_dimensions(svg)
     images = []
     for path in paths:
-        images.append(SVGStringToImageBlob(SVGString(path, height, width)))
+        images.append(convert_svg_to_image_stream(SVGString(path, height, width)))
     return images
 
-def SVGDimensions(str):
+def get_svg_dimensions(str):
     result = re.search(SVGRegex.reWH, str)
     if result == None:
         return (None, None, None)
@@ -142,7 +142,7 @@ def SVGDimensions(str):
 def SVGString(DBStr, height=None, width=None, keepImage=False):
     addedStr = DBStr
     if height == None or width == None:
-        image, height, width = SVGDimensions(DBStr)
+        image, height, width = get_svg_dimensions(DBStr)
         if not keepImage and image:
             addedStr = DBStr.replace(image, '')
     addedStr = addedStr.encode('utf-8')
@@ -160,7 +160,7 @@ def convertSVGs(LabelList, reconvert=False):
     return [convertSVG(label, reconvert) for label in LabelList if label is not None]
 
 def convertSVG(label, reconvert=False):
-    return convertSVGtoPNG(img_file=labelToSVGStringFile(label.labelShapes), foldername=label.categoryType.category_name,
+    return convert_svg_to_png(img_file=labelToSVGStringFile(label.labelShapes), foldername=label.categoryType.category_name,
                     filename=labelFilename(label),
                     reconvert=reconvert)
 
@@ -171,9 +171,9 @@ def convertAll(reconvert=False):
     convertSVGs(ImageLabel.objects.all(), reconvert=reconvert)
 
 
-def countableLabel(svgString):
-    convertedImages = separatePaths(svgString)
-    height, width = SVGDimensions(svgString)[1:]
+def convert_svg_string_to_numpy_masks(svgString):
+    convertedImages = convert_svg_to_array_of_vector_images(svgString)
+    height, width = get_svg_dimensions(svgString)[1:]
     if not height or not width:
         return None
     image = numpy.zeros((height, width), numpy.uint8)
@@ -189,16 +189,16 @@ def countableLabel(svgString):
     return image
 
 
-def combineImageLabelsToArr(image, category, thresholdPercent=50):
+def combine_image_labels_to_numpy_array(image, category, thresholdPercent=50):
     threshold = thresholdPercent/100.0
     labels = ImageLabel.objects.all().filter(parentImage=image, categoryType=category)
     if not labels:
         return
-    labelImages = [countableLabel(label.labelShapes) for label in labels]
+    labelImages = [convert_svg_string_to_numpy_masks(label.labelShapes) for label in labels]
 
     #Based on https://stackoverflow.com/questions/17291455/how-to-get-an-average-picture-from-100-pictures-using-pil
 
-    height, width = SVGDimensions(labels[0].labelShapes)[1:]
+    height, width = get_svg_dimensions(labels[0].labelShapes)[1:]
     arr = numpy.zeros((height,width),numpy.float)
 
     #TODO: Make this code better by taking into account ImageWindows
@@ -227,7 +227,7 @@ def combineImageLabelsToArr(image, category, thresholdPercent=50):
     #numpy.array(numpy.round(arr), dtype=numpy.uint8)
 
 
-def saveCombinedImage(imageNPArr, image, category, threshold):
+def save_combined_image(imageNPArr, image, category, threshold):
     #Folder format: /averages/*category*/Threshold_*threshold*/
     foldername = category.category_name + '/Threshold_' + str(threshold) + '/'
     imagename = "P%iC%sI%s.png" %(image.id, category.category_name, image.name)
@@ -239,14 +239,14 @@ def saveCombinedImage(imageNPArr, image, category, threshold):
 
     out.save(settings.STATIC_ROOT + settings.LABEL_AVERAGE_FOLDER_NAME + foldername + imagename)
 
-def combineAllLabels(threshold):
+def combine_all_labels(threshold):
     for image in Image.objects.all():
         if len(ImageLabel.objects.all.filter(parentImage=image)) <  crop_images.NUM_LABELS_PER_WINDOW * crop_images.NUM_WINDOW_ROWS * crop_images.NUM_WINDOW_COLS:
             continue
-        combineImageLabels(image, threshold)
+        combine_image_labels(image, threshold)
 
-def combineImageLabels(image, threshold):
+def combine_image_labels(image, threshold):
     for category in image.categoryType.all():
-        combinedImage = combineImageLabelsToArr(image, category, threshold)
+        combinedImage = combine_image_labels_to_numpy_array(image, category, threshold)
         if combinedImage is not None and combinedImage.size:
-            saveCombinedImage(combinedImage, image, category, threshold)
+            save_combined_image(combinedImage, image, category, threshold)
