@@ -309,12 +309,13 @@ def convert_image_label_string_to_svg_string(image_label_string: string,
 
     if keep_image:
         image_path = re.search('ns1:href="(.*)png"', image_label_string)
+        print(image_path)
         try:
             image_path = image_path.group(1) + "png"
         except AttributeError as _:
             image_path = re.search('a0:href="(.*)png"', image_label_string)
             image_path = image_path.group(1) + "png"
-            raise AttributeError from _
+            print("Error", _)
 
         image_width = re.search(r'width="(\d+)"', added_str).group(1)
         image_height = re.search(r'height="(\d+)"', added_str).group(1)
@@ -441,7 +442,7 @@ def convert_image_labels_to_numpy_masks(user_name: string,
         except AttributeError as _:
             image_path = re.search('a0:href="(.*)png"', label.combined_labelShapes)
             image_path = image_path.group(1) + "png"
-            raise AttributeError from _
+            print("Error", _)
 
         image_path = settings.STATIC_ROOT + image_path[image_path.find("static/") + 7:]
         crop_dimensions = (padding_x, padding_y, padding_x + width, padding_y + height)
@@ -565,7 +566,7 @@ def convert_image_labels_to_json(user_name: string,
         except AttributeError as _:
             image_path = re.search('a0:href="(.*)png"', label.combined_labelShapes)
             image_path = image_path.group(1) + "png"
-            raise AttributeError from _
+            print("Error", _)
 
         image_path = settings.STATIC_ROOT + image_path[image_path.find("static/") + 7:]
         crop_dimensions = (padding_x, padding_y, padding_x + width, padding_y + height)
