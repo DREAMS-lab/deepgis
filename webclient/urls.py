@@ -32,6 +32,7 @@ urlpatterns = [
     path('print_label_data', views.print_label_data),
     url(r'^get_overlayed_combined_image/(?P<image_label_id>[0-9]*)$', views.get_overlayed_combined_image),
     url(r'^get_overlayed_category_image/(?P<category_label_id>[0-9]*)$', views.get_overlayed_category_image),
+    url(r'^get_overlayed_combined_gif/(?P<image_label_id>[0-9]*)$', views.get_overlayed_combined_gif),
     url(r'^get_all_tiled_labels/', views.get_all_tiled_labels, name='get_all_tiled_labels'),
     path('addTiledLabel', views.add_tiled_label),
     path('TiledLables', views.get_all_tiled_labels),

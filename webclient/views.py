@@ -53,6 +53,7 @@ import numpy as np
 from .models import *
 from django.contrib.gis.geos import Polygon, MultiPolygon
 import csv
+from django.views.decorators.cache import never_cache
 
 ######
 # PAGES
@@ -888,6 +889,45 @@ def get_overlayed_combined_image(request, image_label_id):
         output = io.BytesIO()
         foreground.save(output, format='png')
         return HttpResponse(output.getvalue(), content_type="image/png")
+    else:
+        return HttpResponseBadRequest('Authentication error')
+
+
+@never_cache
+@require_GET
+def get_overlayed_combined_gif(request, image_label_id):
+    user = request.user
+    print(user)
+    if not user.is_authenticated:
+        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    image_label = ImageLabel.objects.filter(id=image_label_id)
+    if not image_label:
+        return HttpResponseBadRequest('Bad image_label_id: ' + image_label_id)
+    image_label = image_label[0]
+    _user = User.objects.filter(username=user)[0]
+    if (str(user) == str(image_label.labeler)) or (_user.is_staff) or _user.is_superuser:
+        image = image_label.parentImage
+        try:
+            blob = convert_label_to_image_stream(image_label)
+        except RuntimeError as e:
+            print(e, file=sys.stderr)
+            return HttpResponseServerError(str(e))
+
+        # image with annotations has been saved as blob
+        foreground = PILImage.open(io.BytesIO(blob)).convert('PA')
+        url = 'http://' + request.get_host() + image.path + image.name
+        background = PILImage.open(urlopen(url)).convert('PA')
+        base_folder = settings.MEDIA_ROOT + settings.LABEL_FOLDER_NAME + str(user) + '/'
+        if not os.path.exists(base_folder):
+            os.makedirs(base_folder)
+        if os.path.exists(base_folder + "combined_image.gif"):
+            os.remove(base_folder + "combined_image.gif")
+        background.save(base_folder + "combined_image.gif", save_all=True, append_images=[foreground], duration=500, loop=0)
+        print(base_folder + "combined_image.gif")
+        with open(base_folder + "combined_image.gif", 'rb') as f:
+            response = HttpResponse(f.read(), content_type="image/gif")
+            response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return response
     else:
         return HttpResponseBadRequest('Authentication error')
 

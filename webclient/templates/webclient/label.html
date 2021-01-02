@@ -609,7 +609,7 @@
 							<td id="${property}_timetaken">${content[property]["timetaken"]}</td>
 							<td id="${property}_labelcount">${content[property]["labelcount"]}</td>
 							<td id="${property}_number">
-								<a href="javascript:;" class="pop" onClick="modalShow(this)" src="/webclient/get_overlayed_combined_image/${content[property]["number"]}">Show</a>
+								<a href="javascript:;" class="pop" onClick="modalShow(this)" data-src="${content[property]["number"]}" src="/webclient/get_overlayed_combined_gif/${content[property]["number"]}">Display and Edit</a>
 							</td>
 							</tr>`)
 						}
