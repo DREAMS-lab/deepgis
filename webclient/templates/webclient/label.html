@@ -32,6 +32,7 @@
 	globals.panStep = 1;
 	globals.AnnotationsDrawn = false;
 	globals.Annotations = [];
+	globals.editPreviousLabels = -1;
 	var labelsLayer = new paper.Layer();
 
 	var create_groups_shapes = function(categories, colors, shapes) {
@@ -162,7 +163,6 @@
 					matchShapes: true
 				});
 				group_svgs[key] = g_svg;
-
 			}
 			var svg = window.labelsLayer.exportSVG({
 				embedImages: false,
@@ -186,6 +186,7 @@
 					image_name: currentImage.image_name,
 					path: currentImage.path,
 					label_list: svg,
+					editLabel: globals.editPreviousLabels,
 					category_labels: group_svgs,
 					subimage: {
 						x: imageX,
@@ -201,7 +202,9 @@
 					timeTaken: timeTaken
 				}),
 				success: function(data) {
-					showSnackBar("New image");
+					response = JSON.parse(data);
+					showSnackBar(response.message);
+					globals.editPreviousLabels = -1;
 					globals.AnnotationsDrawn = false;
 					if (window.labelsLayer.hasChildren()) {
 						window.labelsLayer.removeChildren();
@@ -424,17 +427,6 @@
                 if (globals.isActive) {
                     var center = (startPoint + event.point) / 2;
                     if (!globals.dragged) {
-                        // changing this to reflect local radio button choice than database option
-                        // if(shape == "Circle"){
-                        //     window.circlePath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
-                        // }
-                        // else
-                        // {
-                        // 	//replacing rectangle logic with ellipse logic
-                        // 	// window.circlePath = new Path.Rectangle(startPoint, event.point);
-                        // 	window.circlePath = new Path.Ellipse(startPoint, event.point);
-                        // }
-                        //adding a switch case to account for possible other annotation tool options
                         switch (globals.chosenTool) {
                             case 'circle':
                                 window.circlePath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
@@ -452,26 +444,13 @@
                         window.circlePath.style = globals.categoryGroups[category].style;
                         window.circlePath.opacity = 1;
                     }
-                    //changing this to reflect local radio button choice than database option
-                    // if(shape == "Circle"){
-                    //     newPath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
-                    // }
-                    // else
-                    // {
-                    //  	  // newPath = new Path.Rectangle(startPoint, event.point);
-                    // 		newPath = new Path.Ellipse(startPoint, event.point);
-                    // }
-                    //
-                    //adding a switch case to account for possible other annotation tool options
                     switch (globals.chosenTool) {
                         case 'circle':
-
                             newPath = new Path.Circle(center, startPoint.getDistance(event.point) / 2);
                             var diameter = startPoint.getDistance(event.point);
                             break;
                         case 'ellipse':
                             newPath = new Path.Ellipse(startPoint, event.point);
-                            //calculate length of longer axis.
                             var dist1 = Math.abs(startPoint.x - event.point.x);
                             var dist2 = Math.abs(startPoint.y - event.point.y);
                             var diameter = Math.max(dist1, dist2);
@@ -545,6 +524,7 @@
 	{
 		globals.locationData = data;
 	}
+
 	function startAnnotations() {
 		$('#debug').show();
 		$('#controls').show();
@@ -558,6 +538,7 @@
 		$('#user_annotations').hide();
 		$('#continueAnnotations').hide();
 		$('#generateDatasetPath').hide()
+		$('#imagemodal').modal('hide');
 	}
 
 
@@ -884,45 +865,41 @@
 			url: "/webclient/getNewImage",
 			type: "GET",
 			dataType: "json",
-			data: currentImage,
-			/*{
-			image_name: selectedImage.image_name,
-			path: selectedImage.path
-		}, */
-		success: function(response) {
+			data: {},
+			success: function(response) {
 
-			//handle metadata
-			var image_metadata = response.metadata;
-			if(image_metadata)
-			{
-				setLocationData(image_metadata);
-			}
+				//handle metadata
+				var image_metadata = response.metadata;
+				if(image_metadata)
+				{
+					setLocationData(image_metadata);
+				}
 
-			data = response.labels;
-			if (data) {
-				displayLabels(response.labels);
-			}
-			imageX = response.subimage.x;
-			imageY = response.subimage.y;
-			imageWidth = response.subimage.width;
+				data = response.labels;
+				if (data) {
+					displayLabels(response.labels);
+				}
+				imageX = response.subimage.x;
+				imageY = response.subimage.y;
+				imageWidth = response.subimage.width;
 
-			imageHeight = response.subimage.height;
-			imagePadding = response.subimage.padding;
+				imageHeight = response.subimage.height;
+				imagePadding = response.subimage.padding;
 
-			if (typeof padding == 'undefined') {
-				padding = 0;
-			}
-			displayImage(response.image_name, response.path, response.categories, response.shapes, response.colors,
-				new paper.Point(response.subimage.x, response.subimage.y),
-				imageWidth, imageHeight, imagePadding);
-				currentImage = response
+				if (typeof padding == 'undefined') {
+					padding = 0;
+				}
+				displayImage(response.image_name, response.path, response.categories, response.shapes, response.colors,
+					new paper.Point(response.subimage.x, response.subimage.y),
+					imageWidth, imageHeight, imagePadding);
+				currentImage = response;
 			},
-
 			error: function(xhr, errmsg, err) {
-				alert(xhr.status + ": " + xhr.responseText);
+					alert(xhr.status + ": " + xhr.responseText);
 			}
 		});
 	}
+
 	//TODO: Input validation and error checking
 	function displayImage(image_name, image_path, categories, shapes, colors, point, width, height, padding) {
 		if (width <= 0 || height <= 0 || padding < 0) {
@@ -1015,9 +992,122 @@
 	}
 
 	function modalShow(elem) {
-		console.log($(elem).attr('src'));
-		$('.imagepreview').attr('src', $(elem).attr('src'));
+		var location = $(elem).attr('src') + "?timestamp=" + new Date().getTime();
+		$('.imagepreview').removeAttr("src").attr('src', location);
+		$('#editbutton').attr('data-src', $(elem).attr('data-src'));
 		$('#imagemodal').modal('show');
+	}
+
+	function editImage(elem) {
+		id = $(elem).attr('data-src');
+		$.ajax({
+			url: "/webclient/editImageLabel",
+			type: "GET",
+			dataType: "json",
+			data: {"image_id" : id},
+			success: function(response) {
+				if (response.status == "success") {
+					globals.labelsDrawn = 0;
+					labelsLayer.clear();
+					labelsLayer.view.zoom = 1;
+					labelsLayer.view.setCenter(globals.initialCenter);
+					globals.AnnotationsDrawn = false;
+					if (window.labelsLayer.hasChildren()) {
+						window.labelsLayer.removeChildren();
+					}
+					globals.aboveExistingLabel = false;
+					startTime = Date.now();
+
+					if (!window.labelsLayer) {
+						window.labelsLayer = new paper.Layer();
+					} else {
+						original_image_raster.remove();
+						globals.raster.remove();
+					}
+
+					var image_metadata = response.metadata;
+					if(image_metadata)
+					{
+						setLocationData(image_metadata);
+					}
+
+					data = response.labels;
+					if (data) {
+						displayLabels(response.labels);
+					}
+					imageX = response.subimage.x;
+					imageY = response.subimage.y;
+					imageWidth = response.subimage.width;
+					imageHeight = response.subimage.height;
+					imagePadding = response.subimage.padding;
+
+					if (typeof padding == 'undefined') {
+						padding = 0;
+					}
+					displayImage(response.image_name, response.path, response.categories,
+								response.shapes, response.colors,
+								new paper.Point(response.subimage.x, response.subimage.y), imageWidth, imageHeight, imagePadding);
+					currentImage = response;
+					drawn_labels = response.drawn_labels;
+					for(i = 0; i < drawn_labels.length; i++) {
+						var pathData = drawn_labels[i][0];
+						if (drawn_labels[i][2] == "circle") {
+							x = (pathData["cx"]);
+							y = parseFloat(pathData["cy"]);
+							radius = parseFloat(pathData["radius"]);
+							window.circlePath = new paper.Path.Circle(new paper.Point(x, y), radius);
+						} else if (drawn_labels[i][2] == "ellipse") {
+							x = (pathData["cx"]);
+							y = parseFloat(pathData["cy"]);
+							rx = parseFloat(pathData["rx"]);
+							ry = parseFloat(pathData["ry"]);
+							window.circlePath = new paper.Path.Ellipse({
+													center: [x, y],
+													radius: [rx, ry]
+												});
+						} else {
+							window.circlePath = new paper.Path(pathData);
+						}
+						var category = drawn_labels[i][1];
+						globals.labelsDrawn += 1;
+						globals.categoryGroups[category].addChild(window.circlePath);
+						window.circlePath.style = globals.categoryGroups[category].style;
+						window.circlePath.opacity = globals.categoryGroups[category].opacity;
+
+						window.circlePath.onMouseEnter = function(event)
+						{
+							if (!globals.isActive)
+							{
+								globals.aboveExistingLabel = true;
+								this.opacity = 1;
+								window.circlePath = this;
+							}
+						};
+
+						window.circlePath.onMouseLeave = function(event)
+						{
+							globals.aboveExistingLabel = false;
+							mode = null;
+							this.opacity = globals.categoryGroups[category].opacity;
+						};
+
+						window.circlePath.onDoubleClick = function(event)
+						{
+							globals.isActive = false;
+							globals.aboveExistingLabel = false;
+							this.remove();
+							path = null;
+							globals.labelsDrawn -= 1;
+						};
+					}
+					showSnackBar(response.message);
+					startAnnotations();
+					globals.editPreviousLabels = id;
+				} else {
+					showSnackBar("Edit Image failed!");
+				}
+			}
+		});
 	}
 
 	function selectModelOption(elem) {
@@ -1272,11 +1362,17 @@
 				</a>
 			</div>
 			<div class="modal fade" id="imagemodal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-			  <div class="modal-dialog">
+			  <div class="modal-dialog" style="max-width: 600px;">
 				<div class="modal-content">
+				  <div class="modal-header">
+				  </div>
 				  <div class="modal-body">
-					<button type="button" class="close" data-dismiss="modal" ><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
 					<img src="" class="imagepreview" style="width: 100%;" >
+				  </div>
+				  <div class="modal-footer">
+					  <p>Clicking edit option will <span style='color: #FF0000;'>remove</span> existing annotations and load this annotation. To save, please submit the labels.</p>
+					  <button type="button" onClick="editImage(this)" data-src="" class="btn btn-warning" id="editbutton" data-dismiss="modal">Edit</button>
+					  <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 				  </div>
 				</div>
 			  </div>
@@ -1376,8 +1472,5 @@ function updateCategoryProperties() {
 }
 
 </script>
-
 </body>
-
 </html>
-

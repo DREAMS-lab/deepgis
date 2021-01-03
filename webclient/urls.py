@@ -1,8 +1,8 @@
-from django.conf.urls import url, include
+from django.conf.urls import url
 from webclient import views as views
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import include, path
+from django.urls import path
 
 
 urlpatterns = [
@@ -29,6 +29,7 @@ urlpatterns = [
     url(r'^getLOLACraterAnnotations/$', views.getLOLACraterAnnotations),
     url(r'^getAnnotations/$', views.getAnnotations),
     url(r'^selectModels', views.select_models),
+    url(r'^editImageLabel', views.edit_image_label),
     path('print_label_data', views.print_label_data),
     url(r'^get_overlayed_combined_image/(?P<image_label_id>[0-9]*)$', views.get_overlayed_combined_image),
     url(r'^get_overlayed_category_image/(?P<category_label_id>[0-9]*)$', views.get_overlayed_category_image),
