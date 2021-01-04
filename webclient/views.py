@@ -920,7 +920,11 @@ def get_overlayed_combined_gif(request, image_label_id):
         # image with annotations has been saved as blob
         foreground = PILImage.open(io.BytesIO(blob)).convert('PA')
         url = 'http://' + request.get_host() + image.path + image.name
-        background = PILImage.open(urlopen(url)).convert('PA')
+        crop_dimensions = (image_label.imageWindow.x,
+                           image_label.imageWindow.y,
+                           image_label.imageWindow.x + image_label.imageWindow.width,
+                           image_label.imageWindow.x + image_label.imageWindow.height)
+        background = PILImage.open(urlopen(url)).convert('PA').crop(crop_dimensions)
         base_folder = settings.MEDIA_ROOT + settings.LABEL_FOLDER_NAME + str(user) + '/'
         if not os.path.exists(base_folder):
             os.makedirs(base_folder)
