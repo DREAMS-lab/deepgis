@@ -1,3 +1,4 @@
+import base64
 import csv
 import io
 import json
@@ -12,7 +13,6 @@ from random import randint
 from urllib.parse import urljoin
 from urllib.request import urlopen
 import numpy as np
-import base64
 import requests
 import torch
 import torchvision
@@ -37,11 +37,10 @@ from torchvision.models.detection.rpn import AnchorGenerator
 import matplotlib.pyplot as plt
 from webclient.image_ops import crop_images
 from webclient import helper_ops
-from webclient import models
 from webclient.image_ops.convert_images import convert_label_to_image_stream, convert_image_labels_to_json, \
     convert_image_labels_to_svg_array, combine_all_labels
-from webclient.models import Image, CategoryType, CategoryLabel, User, Labeler, ImageWindow, ImageLabel, \
-    ImageSourceType, ImageFilter, datetime, get_color, TileSet, TiledLabel, TiledGISLabel, GEOSGeometry
+from webclient.models import Image, CategoryType, CategoryLabel, User, Labeler, ImageWindow, ImageLabel, GEOSGeometry
+from webclient.models import ImageSourceType, ImageFilter, datetime, get_color, TileSet, TiledLabel, TiledGISLabel
 
 
 MODEL_SELECTED = None
@@ -337,7 +336,7 @@ def apply_labels(request):
         image_label.save()
         response = {"status": "success", "message": "Successfully added annotations"}
 
-    for category_name, labels in category_labels.items():
+    for category_name, _ in category_labels.items():
         category_type_list = CategoryType.objects.all().filter(category_name=category_name)
         if category_type_list:
             category_type = category_type_list[0]
@@ -377,7 +376,7 @@ def load_labels(request):
 
 
 @require_GET
-def getInfo(request):
+def get_info(request):
     if 'image_name' not in request.GET or 'path' not in request.GET:
         return HttpResponseBadRequest("Missing 'image_name or 'path'")
     parent_image_ = request.GET['image_name']
@@ -407,7 +406,7 @@ def getInfo(request):
 
 @require_GET
 @csrf_exempt
-def get_category_info(request):
+def get_category_info():
     response = {}
     for category in CategoryType.objects.all():
         response[category.category_name] = {
@@ -419,31 +418,31 @@ def get_category_info(request):
 # function to get LOLA craters within the specified region for annotation app
 @csrf_exempt
 @require_GET
-def getLOLACraterAnnotations(request):
+def get_lola_crater_annotations(request):
     # get parameters from request
     upper_left_latitude = float(request.GET['UpperLeftLatitude'])
     upper_left_longitude = float(request.GET['UpperLeftLongitude'])
     lower_right_latitude = float(request.GET['LowerRightLatitude'])
-    LowerRightLongitude = float(request.GET['LowerRightLongitude'])
+    lower_right_longitude = float(request.GET['LowerRightLongitude'])
 
     min_latitude = min(upper_left_latitude, lower_right_latitude)
     max_latitude = max(upper_left_latitude, lower_right_latitude)
-    min_longitude = min(upper_left_longitude, LowerRightLongitude)
-    max_longitude = max(upper_left_longitude, LowerRightLongitude)
+    min_longitude = min(upper_left_longitude, lower_right_longitude)
+    max_longitude = max(upper_left_longitude, lower_right_longitude)
 
     folder_path = os.path.realpath(settings.STATIC_ROOT)
     filename = folder_path + "/lroc_crater_db.csv"
 
-    craterList = []
+    crater_list = []
     with open(filename) as CSV_FILE:
         reader = csv.reader(CSV_FILE)
         next(reader)
         for line in reader:
             if (max_latitude >= float(line[1]) >= min_latitude and
                     max_longitude >= float(line[0]) >= min_longitude):
-                craterList.append(line)
+                crater_list.append(line)
 
-    return JsonResponse(craterList, safe=False)
+    return JsonResponse(crater_list, safe=False)
 
 
 # function to get image metadata from json file
@@ -504,14 +503,14 @@ def get_masks(image_path, x, y, width, height):
     image_mean = [0.34616187074865956, 0.34616187074865956, 0.34616187074865956]
     image_std = [0.10754412766560431, 0.10754412766560431, 0.10754412766560431]
 
-    MaskRCNN = get_model_instance_segmentation(num_classes, image_mean, image_std, stats=True)
-    MaskRCNN.to(device)
-    MaskRCNN.eval()
+    mask_rcnn = get_model_instance_segmentation(num_classes, image_mean, image_std, stats=True)
+    mask_rcnn.to(device)
+    mask_rcnn.eval()
 
     model_path = MODEL_SELECTED
-    MaskRCNN.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+    mask_rcnn.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
 
-    prediction = MaskRCNN(image.unsqueeze(0).to(device))[0]
+    prediction = mask_rcnn(image.unsqueeze(0).to(device))[0]
 
     boxes_ = prediction["boxes"].cpu().detach().numpy().astype(int)
     boxes = np.empty_like(boxes_)
@@ -533,30 +532,28 @@ def get_masks(image_path, x, y, width, height):
 def get_annotations(request):
     # return a list of svg strings
     image_path = request.GET['image_name']
-    x = request.GET['x']
-    y = request.GET['y']
     width = request.GET['width']
     height = request.GET['height']
-    masks, labels = get_masks('/app/webclient' + image_path, int(x), int(y), int(width), int(height))
+    masks, labels = get_masks('/app/webclient' + image_path, int(request.GET['x']), int(request.GET['y']), int(width), int(height))
     if "status" in masks:
         return JsonResponse(masks, safe=False)
     svg_strings = []
     categories = ["background"]
     for category in CategoryType.objects.all():
         categories.append(str(category.category_name))
-    for id, category in enumerate(categories):
-        if id == 0:  # skip background
+    for _, category in enumerate(categories):
+        if _ == 0:  # skip background
             continue
         for i in range(masks.shape[2]):
             mask = masks[:, :, i]
             mask[mask == 0] = -9999
-            prediction = mask == id
-            mask[mask == id] = 1
+            prediction = mask == _
+            mask[mask == _] = 1
             mask = mask.astype(np.int16, copy=False)
             shapes = rasterio_shapes(mask, mask=prediction)
-            s = list(shapes)
-            if len(s) > 0 and len(s[0]) > 0:
-                svg_string = shapely_shape(s[0][0])._repr_svg_()
+            shapes_list = list(shapes)
+            if len(shapes_list) > 0 and len(shapes_list[0]) > 0:
+                svg_string = shapely_shape(shapes_list[0][0])._repr_svg_()
                 soup = BeautifulSoup(svg_string)
                 paths = soup.find_all('path')
                 svg_strings.append((paths[0].get('d'), category))
@@ -569,26 +566,23 @@ def get_new_image(request):
     if len(Image.objects.all()) == 0:
         return HttpResponseBadRequest("No images in database")
 
-    labelsPerImage = crop_images.NUM_WINDOW_COLS * \
+    labels_per_image = crop_images.NUM_WINDOW_COLS * \
                      crop_images.NUM_WINDOW_ROWS * crop_images.NUM_LABELS_PER_WINDOW
 
-    images = Image.objects.all().annotate(count=Count('imagelabel')).filter(count__lt=labelsPerImage)
+    images = Image.objects.all().annotate(count=Count('imagelabel')).filter(count__lt=labels_per_image)
     user = request.user
 
-    if user.groups.filter(name='god').exists():
-        ignore_max_count = True
-    else:
-        ignore_max_count = False
+    ignore_max_count = bool(user.groups.filter(name='god').exists())
 
     images = images.order_by('count').reverse()
 
     img = None
-    subimage = None
+    sub_image = None
     for _ in images:
-        index = randint(0, len(images) - 1)
-        i = images[index]
-        subimage = crop_images.getImageWindow(i, request.user, ignore_max_count=ignore_max_count)
-        if subimage is not None:
+        indices = randint(0, len(images) - 1)
+        i = images[indices]
+        sub_image = crop_images.getImageWindow(i, request.user, ignore_max_count=ignore_max_count)
+        if sub_image is not None:
             img = i
             break
 
@@ -608,34 +602,10 @@ def get_new_image(request):
                 'categories': [c.category_name for c in CategoryType.objects.all()],
                 'shapes': [c.get_label_type_display() for c in img.categoryType.all()],
                 'colors': [str(c.color) for c in CategoryType.objects.all()],
-                'subimage': subimage
+                'subimage': sub_image
                 }
 
     return JsonResponse(response)
-
-
-# #TODO: Remove csrf_exempt
-# @csrf_exempt
-# def purge(request):
-#    Image.objects.all().delete()
-#    ImageLabel.objects.all().delete()
-#    ImageSourceType.objects.all().delete()
-#    CategoryType.objects.all().delete()
-#    return HttpResponse("PURGED TABLES!")
-
-
-# TODO: Check for bad input
-'''
-Request: POST
-{
-    path: location of image (not including image name itself. E.g. '/home/self/image-location/'). REQUIRED
-    image_name:name of image REQUIRED
-    description: A description NOT REQUIRED
-    source_description: Description of image_source. NOT REQUIRED
-    categories: List of categories of the image (e.g. ['apple', 'day']). REQUIRED, must be NONEMPTY.
-}
-
-'''
 
 
 @csrf_exempt
@@ -664,7 +634,8 @@ def add_image(request):
     try:
         url_check(path)
         width, height = PILImage.open(StringIO(urllib.request.urlopen(path + request.POST['image_name']).read())).size
-    except ValidationError as e:
+    except ValidationError as value_error:
+        print(value_error)
         try:
             width, height = PILImage.open(path + request.POST['image_name']).size
         except IOError:
@@ -685,30 +656,29 @@ def add_image(request):
 
     # Get or create ImageSourceType
     desc = request.POST.get('source_description', default="human")
-    imageSourceTypeList = ImageSourceType.objects.all().filter(description=desc)
-    if imageSourceTypeList:
-        sourceType = imageSourceTypeList[0]
+    image_source_type_list = ImageSourceType.objects.all().filter(description=desc)
+    if image_source_type_list:
+        source_type = image_source_type_list[0]
     else:
-        sourceType = ImageSourceType(description=request.POST.get('source_description', default="human"),
-                                     pub_date=datetime.now())
-        sourceType.save()
+        source_type = ImageSourceType(description=request.POST.get('source_description', default="human"),
+                                      pub_date=datetime.now())
+        source_type.save()
 
     # Get CategoryType entries or add if necessary.
     category_list = [CategoryType.objects.get_or_create(category_name=category)[0] for category in request_categories]
     for cat in category_list:
         print(cat.color)
         if not cat.color:
-            cat.color = models.get_color()
             cat.color = get_color()
             cat.save()
 
-    imageList = Image.objects.all().filter(name=request.POST['image_name'], path=path,
-                                           description=request.POST.get('description', default=''), source=sourceType)
-    if imageList:
-        img = imageList[0]
+    image_list = Image.objects.all().filter(name=request.POST['image_name'], path=path,
+                                           description=request.POST.get('description', default=''), source=source_type)
+    if image_list:
+        img = image_list[0]
     else:
         img = Image(name=request.POST['image_name'], path=path, description=request.POST.get('description', default=''),
-                    source=sourceType, width=width, height=height)
+                    source=source_type, width=width, height=height)
         img.save()
 
     img.categoryType.add(*category_list)
@@ -721,20 +691,6 @@ def clean_and_fix_images(request):
     helper_ops.fixAllImagePaths()
     helper_ops.updateAllImageSizes(request.scheme, request.get_host())
     return HttpResponse("All images rows cleaned up and fixed.")
-
-
-'''
-Request: POST
-{
-    path: location of image (not including image name itself. E.g. '/home/self/image-location/'). REQUIRED
-    image_name:name of image REQUIRED
-    description: A description CHANGED IF INCLUDED
-    source_description: Description of image_source. CHANGED IF INCLUDED
-    add_category: Category of the image (e.g. 'apple') to be added to the list. UPDATED IF INCLUDED
-    remove_category: Category of the image (e.g. 'apple') to be added to the list. UPDATED IF INCLUDED
-}
-
-'''
 
 
 @csrf_exempt
@@ -768,40 +724,38 @@ def update_image(request):
 
 @csrf_exempt
 @require_POST
-def convert_all(request):
+def convert_all():
     convert_image_labels_to_svg_array(ImageLabel.objects.all())
     return HttpResponse('Ok')
 
 
 @csrf_exempt
 @require_GET
-def unlabeled_images(request):
+def unlabeled_images():
     images = Image.objects.all().filter(imagelabel__isnull=True).distinct()
     return HttpResponse("Images: " + ','.join(map(str, images)))
 
 
 @csrf_exempt
 @require_GET
-def num_image_labels(request):
+def num_image_labels():
     images = Image.objects.all().annotate(num=Count('imagelabel')).order_by('-num')
-    # print(images)
     return HttpResponse("Images: " + ','.join(map(str, images)))
 
 
 @csrf_exempt
 @require_POST
 def combine_all_images(request):
-    thresholdPercent = int(request.POST.get('thresholdPercent', 50))
-    combine_all_labels(thresholdPercent)
+    threshold_percent = int(request.POST.get('thresholdPercent', 50))
+    combine_all_labels(threshold_percent)
     return HttpResponse("OK")
 
 
 @csrf_exempt
 @require_POST
-def calculate_entropy_map(request):
-    import webclient.image_ops.crop_images
+def calculate_entropy_map():
     images = Image.objects.all()
-    webclient.image_ops.crop_images.calculate_entropy_map(images[0], images[0].categoryType.all()[0])
+    crop_images.calculate_entropy_map(images[0], images[0].categoryType.all()[0])
     return HttpResponse('ok')
 
 
@@ -819,18 +773,17 @@ def get_overlayed_combined_image(request, image_label_id):
         return HttpResponseBadRequest('Bad image_label_id: ' + image_label_id)
     image_label = image_label[0]
     _user = User.objects.filter(username=user)[0]
-    if (str(user) == str(image_label.labeler)) or (_user.is_staff) or _user.is_superuser:
+    if (str(user) == str(image_label.labeler)) or _user.is_staff or _user.is_superuser:
         try:
             blob = convert_label_to_image_stream(image_label)
-        except RuntimeError as e:
-            print(e, file=sys.stderr)
-            return HttpResponseServerError(str(e))
+        except RuntimeError as runtime_error:
+            print(runtime_error, file=sys.stderr)
+            return HttpResponseServerError(str(runtime_error))
         foreground = PILImage.open(io.BytesIO(blob)).convert('RGBA')
         output = io.BytesIO()
         foreground.save(output, format='png')
         return HttpResponse(output.getvalue(), content_type="image/png")
-    else:
-        return HttpResponseBadRequest('Authentication error')
+    return HttpResponseBadRequest('Authentication error')
 
 
 @never_cache
@@ -845,13 +798,13 @@ def get_overlayed_combined_gif(request, image_label_id):
         return HttpResponseBadRequest('Bad image_label_id: ' + image_label_id)
     image_label = image_label[0]
     _user = User.objects.filter(username=user)[0]
-    if (str(user) == str(image_label.labeler)) or (_user.is_staff) or _user.is_superuser:
+    if (str(user) == str(image_label.labeler)) or _user.is_staff or _user.is_superuser:
         image = image_label.parentImage
         try:
             blob = convert_label_to_image_stream(image_label)
-        except RuntimeError as e:
-            print(e, file=sys.stderr)
-            return HttpResponseServerError(str(e))
+        except RuntimeError as runtime_error:
+            print(runtime_error, file=sys.stderr)
+            return HttpResponseServerError(str(runtime_error))
 
         # image with annotations has been saved as blob
         foreground = PILImage.open(io.BytesIO(blob)).convert('PA')
@@ -887,9 +840,9 @@ def get_overlayed_category_image(request, category_label_id):
     image = category_label.parent_label.parentImage
     try:
         blob = convert_label_to_image_stream(category_label)
-    except RuntimeError as e:
-        print(e, file=sys.stderr)
-        return HttpResponseServerError(str(e))
+    except RuntimeError as runtime_error:
+        print(runtime_error, file=sys.stderr)
+        return HttpResponseServerError(str(runtime_error))
     foreground = PILImage.open(io.BytesIO(blob))
     foreground = foreground.convert('RGBA')
     path = image.path
@@ -907,11 +860,11 @@ re_transform_xy = re.compile(
 
 @csrf_exempt
 @require_POST
-def fix_label_location(request):
-    for label in ImageLabel.objects.all():
-        shape = label.labelShapes
-        label.labelShapes = re.sub(re_transform_xy, subtract_padding, shape)
-        label.save()
+def fix_label_location():
+    for _label in ImageLabel.objects.all():
+        shape = _label.labelShapes
+        _label.labelShapes = re.sub(re_transform_xy, subtract_padding, shape)
+        _label.save()
     return HttpResponse("Changed")
 
 
@@ -928,31 +881,31 @@ def subtract_padding(match_object):
 
 @csrf_exempt
 @require_POST
-def print_label_data(request):
+def print_label_data():
     with open('imageLabel_data.csv', 'w') as csvfile:
         fieldnames = ['parentImage_name', 'parentImage_path', 'categoryType',
                       'pub_date', 'labeler', 'iw_x', 'iw_y', 'iw_width', 'iw_height', 'timeTaken',
                       'if_brightness', 'if_contrast', 'if_saturation']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
-        for label in ImageLabel.objects.all():
-            imageFilter = ImageFilter.objects.all().get(imageLabel=label)
-            labelDict = {
-                'parentImage_name': label.parentImage.name,
-                'parentImage_path': label.parentImage.path,
-                'categoryTypes': [cat_label.categoryType.category_name for cat_label in label.categorylabel_set],
-                'pub_date': label.pub_date,
-                'labeler': label.labeler,
-                'iw_x': label.imageWindow.x,
-                'iw_y': label.imageWindow.y,
-                'iw_width': label.imageWindow.width,
-                'iw_height': label.imageWindow.height,
-                'timeTaken': label.timeTaken,
-                'if_brightness': imageFilter.brightness,
-                'if_contrast': imageFilter.contrast,
-                'if_saturation': imageFilter.saturation,
+        for _label in ImageLabel.objects.all():
+            image_filter = ImageFilter.objects.all().get(imageLabel=_label)
+            label_dict = {
+                'parentImage_name': _label.parentImage.name,
+                'parentImage_path': _label.parentImage.path,
+                'categoryTypes': [cat_label.categoryType.category_name for cat_label in _label.categorylabel_set],
+                'pub_date': _label.pub_date,
+                'labeler': _label.labeler,
+                'iw_x': _label.imageWindow.x,
+                'iw_y': _label.imageWindow.y,
+                'iw_width': _label.imageWindow.width,
+                'iw_height': _label.imageWindow.height,
+                'timeTaken': _label.timeTaken,
+                'if_brightness': image_filter.brightness,
+                'if_contrast': image_filter.contrast,
+                'if_saturation': image_filter.saturation,
             }
-            writer.writerow(labelDict)
+            writer.writerow(label_dict)
     return HttpResponse("Printed")
 
 
@@ -1029,7 +982,7 @@ def get_histogram_for_window(request):
         result_set.append(area)
 
     area_list = np.asarray(result_set)
-    f = plt.figure(figsize=(4, 3))
+
     plt.clf()
     plt.hist(area_list, number_of_bins)
     plt.xlabel('Rock area (sq. m)')
@@ -1047,7 +1000,7 @@ def get_window_tiled_labels(request):
     float_tolerance = 1e-5
     request_json = json.load(request)
 
-    tileLabels = TiledLabel.objects.filter(
+    tile_labels = TiledLabel.objects.filter(
         northeast_Lat__range=(
             request_json["northeast_lat"] - float_tolerance, request_json["northeast_lat"] + float_tolerance),
         northeast_Lng__range=(
@@ -1057,7 +1010,7 @@ def get_window_tiled_labels(request):
         southwest_Lng__range=(
             request_json["southwest_lng"] - float_tolerance, request_json["northeast_lat"] + float_tolerance))
 
-    for tiled_label in tileLabels:
+    for tiled_label in tile_labels:
         response_dict = {"northeast_lat": tiled_label.northeast_Lat, "northeast_lng": tiled_label.northeast_Lng,
                          "southwest_lat": tiled_label.southwest_Lat, "southwest_lng": tiled_label.southwest_Lng,
                          "zoom_level": tiled_label.zoom_level, "label_type": tiled_label.get_label_type_display(),
@@ -1098,7 +1051,7 @@ def add_train_image_label(request):
 
 @csrf_exempt
 @require_POST
-def add_all_tiled_categories(request):
+def add_all_tiled_categories():
     for cat_name in ["amp", "tap", "car", "house", "tree", "road"]:
         category = CategoryType()
         category.category_name = cat_name
@@ -1127,8 +1080,8 @@ def delete_tile_label(request):
                 southwest_Lat is None or southwest_Lng is None or category_name is None:
             return HttpResponseBadRequest("Missing required field")
         category = CategoryType.objects.get(category_name=category_name)
-        jsonStr = json.loads(request.get('geojson'))
-        s = str(jsonStr["geometry"])
+        json_str = json.loads(request.get('geojson'))
+        s = str(json_str["geometry"])
         poly = GEOSGeometry(s)
         tile_label = TiledGISLabel.objects.filter(category=category).filter(geometry__equals=poly)
 
@@ -1140,8 +1093,8 @@ def delete_tile_label(request):
 
     # Make sure all objects are okay to delete first
     # If there's an error don't change database
-    for label in to_delete:
-        label.delete()
+    for _label in to_delete:
+        _label.delete()
     return JsonResponse('Success', safe=False)
 
 
