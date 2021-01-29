@@ -812,7 +812,7 @@ def get_overlayed_combined_gif(request, image_label_id):
         crop_dimensions = (image_label.imageWindow.x,
                            image_label.imageWindow.y,
                            image_label.imageWindow.x + image_label.imageWindow.width,
-                           image_label.imageWindow.x + image_label.imageWindow.height)
+                           image_label.imageWindow.y + image_label.imageWindow.height)
         background = PILImage.open(urlopen(url)).convert('PA').crop(crop_dimensions)
         base_folder = settings.MEDIA_ROOT + settings.LABEL_FOLDER_NAME + str(user) + '/'
         if not os.path.exists(base_folder):
