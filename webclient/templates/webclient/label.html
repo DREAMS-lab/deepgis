@@ -534,6 +534,7 @@
 		$('#applyLabels').show();
 		$('#noLabelsList').show();
 		$('#generateDataset').hide();
+		$('#selectAll').hide();
 		$('#googleColab').hide();
 		$('#user_annotations').hide();
 		$('#continueAnnotations').hide();
@@ -551,6 +552,7 @@
 			$('#applyLabels').hide();
 			$('#noLabelsList').hide();
 			$('#generateDataset').show();
+			$('#selectAll').show();
 			$('#googleColab').show();
 			$('#user_annotations').show();
 			$('#continueAnnotations').show();
@@ -566,7 +568,7 @@
 						$("#annotation_grid_body").empty();
 						$("#annotation_grid_head").empty();
 						$("#annotation_grid_head").append(`<tr>
-							<th><input type="checkbox" id="master"></th>
+							<th><input type="checkbox"></th>
 							<th>File Name</th>
 							<th>Labeler</th>
 							<th>Width</th>
@@ -604,6 +606,7 @@
 						$('#applyLabels').show();
 						$('#noLabelsList').show();
 						$('#generateDataset').hide();
+						$('#selectAll').hide();
 						$('#googleColab').hide();
 						$('#user_annotations').hide();
 						$('#continueAnnotations').hide();
@@ -620,6 +623,7 @@
 					$('#applyLabels').show();
 					$('#noLabelsList').show();
 					$('#generateDataset').hide();
+					$('#selectAll').hide();
 					$('#googleColab').hide();
 					$('#user_annotations').hide();
 					$('#continueAnnotations').hide();
@@ -1334,7 +1338,7 @@
 				<table id="annotation_grid" class="table table-sm table-hover table-striped bootgrid-table" cellspacing="0">
 					<thead id="annotation_grid_head">
 						<tr>
-							<th><input type="checkbox" id="master"></th>
+							<th></th>
 							<th>File Name</th>
 							<th>Labeler</th>
 							<th>Width</th>
@@ -1350,6 +1354,8 @@
 				</table>
 			</div>
 			<div>
+				<button id="selectAll" style="display: none;" class="btn"><i class="glyphicon glyphicon-ok">Select All</i></button>
+				<br>
 				<button id="generateDataset" title="generateDataset for MaskRCNN training"
 				type="button" class="btn btn-success btn-sm pull-left" style="display: none;" onclick="generateDataset()">
 					<span class="spinner-border spinner-border-sm" id="generateDatasetSpinner" role="status" aria-hidden="true" style="display: none;"></span>
@@ -1395,16 +1401,10 @@ $("#menu-toggle").click(function(e) {
 	$("#wrapper").toggleClass("toggled");
 });
 
-$('#master').on('click', function(e) {
-	if($(this).is(':checked',true))
-	{
+$('#selectAll').on('click', function(e) {
 		$(".sub_chk").prop('checked', true);
-	}
-	else
-	{
-		$(".sub_chk").prop('checked',false);
-	}
 });
+
 $("#category_submit").click(function() {
 	$("#category_submit").attr("disabled", true);
 	if ($("#add_new_category").val()) {
