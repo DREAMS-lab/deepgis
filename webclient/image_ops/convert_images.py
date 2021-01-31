@@ -308,17 +308,10 @@ def convert_image_label_string_to_svg_string(image_label_string: string,
     image_string = ""
 
     if keep_image:
-        image_path = re.search('ns1:href="(.*)png"', image_label_string)
-        print(image_path)
-        try:
-            image_path = image_path.group(1) + "png"
-        except AttributeError as _:
-            image_path = re.search('a0:href="(.*)png"', image_label_string)
-            image_path = image_path.group(1) + "png"
-            print("Error", _)
-
-        image_width = re.search(r'width="(\d+)"', added_str).group(1)
-        image_height = re.search(r'height="(\d+)"', added_str).group(1)
+        soup = BeautifulSoup(image_label_string)
+        image_path = soup.find('image')['a0:href']
+        image_width = soup.find('image')['width']
+        image_height = soup.find('image')['height']
 
         image_string = f'<defs><pattern id="backgroundImage" patternUnits="userSpaceOnUse" ' \
                        f'width="{width}" height="{height}"> <image xlink:href="{image_path}" ' \
@@ -436,14 +429,8 @@ def convert_image_labels_to_numpy_masks(user_name: string,
                                '.npy')
 
         # create cropped images
-        image_path = re.search('ns1:href="(.*)png"', label.combined_labelShapes)
-        try:
-            image_path = image_path.group(1) + "png"
-        except AttributeError as _:
-            image_path = re.search('a0:href="(.*)png"', label.combined_labelShapes)
-            image_path = image_path.group(1) + "png"
-            print("Error", _)
-
+        soup = BeautifulSoup(label.combined_labelShapes)
+        image_path = soup.find('image')['a0:href']
         image_path = settings.STATIC_ROOT + image_path[image_path.find("static/") + 7:]
         crop_dimensions = (padding_x, padding_y, padding_x + width, padding_y + height)
         im_crop = PILImage.open(image_path).crop(crop_dimensions)
@@ -549,10 +536,7 @@ def convert_image_labels_to_json(user_name: string,
 
     for label in labels:
         parent_image = label.parentImage
-        filename = '%s' % parent_image.name.replace('.JPG', '')
-        filename = '%s' % filename.replace('.PNG', '')
-        filename = '%s' % filename.replace('.jpg', '')
-        filename = '%s' % filename.replace('.png', '')
+        filename = parent_image.name.split(".")[0]
 
         height = label.imageWindow.height
         width = label.imageWindow.width
@@ -560,13 +544,8 @@ def convert_image_labels_to_json(user_name: string,
         padding_y = label.imageWindow.y
 
         # create cropped images
-        image_path = re.search('ns1:href="(.*)png"', label.combined_labelShapes)
-        try:
-            image_path = image_path.group(1) + "png"
-        except AttributeError as _:
-            image_path = re.search('a0:href="(.*)png"', label.combined_labelShapes)
-            image_path = image_path.group(1) + "png"
-            print("Error", _)
+        soup = BeautifulSoup(label.combined_labelShapes)
+        image_path = soup.find('image')['a0:href']
 
         image_path = settings.STATIC_ROOT + image_path[image_path.find("static/") + 7:]
         crop_dimensions = (padding_x, padding_y, padding_x + width, padding_y + height)
