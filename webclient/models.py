@@ -117,7 +117,7 @@ def getDefaultImageWindowId():
 
 class ImageLabel(models.Model):
     parentImage = models.ForeignKey(Image, on_delete=models.CASCADE)
-    combined_labelShapes = models.TextField(max_length=10000)
+    combined_labelShapes = models.TextField(max_length=100000)
     pub_date = models.DateTimeField(default=datetime.now, blank=True)
     labeler = models.ForeignKey(Labeler, on_delete=models.CASCADE, null=True, blank=True, default=None)
     imageWindow = models.ForeignKey(ImageWindow, on_delete=models.CASCADE, default=getDefaultImageWindowId)
@@ -128,7 +128,7 @@ class ImageLabel(models.Model):
 
 class CategoryLabel(models.Model):
     categoryType = models.ForeignKey(CategoryType, on_delete=models.CASCADE)
-    labelShapes = models.TextField(max_length=10000)
+    labelShapes = models.TextField(max_length=100000)
     parent_label = models.ForeignKey(ImageLabel, on_delete=models.CASCADE)
 
     def __str__(self):
