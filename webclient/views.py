@@ -1078,14 +1078,14 @@ def delete_tile_label(request):
     if len(request_list) == 0:
         return JsonResponse({"status": "success", "message": f"Successfully deleted {len(request_list)} labels"}, safe=False)
     for request in request_list:
-        northeast_Lat = request.get("northeast_lat")
-        northeast_Lng = request.get("northeast_lng")
-        southwest_Lat = request.get("southwest_lat")
-        southwest_Lng = request.get("southwest_lng")
+        northeast_lat = request.get("northeast_lat")
+        northeast_lng = request.get("northeast_lng")
+        southwest_lat = request.get("southwest_lat")
+        southwest_lng = request.get("southwest_lng")
         category_name = request.get("category_name")
 
-        if northeast_Lat is None or northeast_Lng is None or \
-                southwest_Lat is None or southwest_Lng is None or category_name is None:
+        if northeast_lat is None or northeast_lng is None or \
+                southwest_lat is None or southwest_lng is None or category_name is None:
             return JsonResponse({"status": "failure", "message": "Failed. Missing required field."}, safe=False)
 
         category = CategoryType.objects.get(category_name=category_name)
