@@ -406,7 +406,7 @@ def get_info(request):
 
 @require_GET
 @csrf_exempt
-def get_category_info():
+def get_category_info(request):
     response = {}
     for category in CategoryType.objects.all():
         response[category.category_name] = {
@@ -913,7 +913,10 @@ def print_label_data():
 @require_POST
 def add_tiled_label(request):
     request_json = json.load(request)
-    tiled_label = TiledLabel()
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    tiled_label = TiledGISLabel()
     tiled_label.northeast_Lat = request_json["northeast_lat"]
     tiled_label.northeast_Lng = request_json["northeast_lng"]
     tiled_label.southwest_Lat = request_json["southwest_lat"]
@@ -924,11 +927,11 @@ def add_tiled_label(request):
         [K for (K, v) in TiledGISLabel.label_type_enum if request_json["label_type"].lower() == v.lower()][0]
     json_ = request_json["geoJSON"]
     tiled_label.label_json = json_
-    print(json_["geometry"])
-    print(type(json_["geometry"]))
     tiled_label.geometry = GEOSGeometry(str(json_["geometry"]))
     tiled_label.save()
-    resp_obj = {"status": "success", "category": request_json["category_name"]}
+    resp_obj = {"status": "success",
+                "message": "Successfully added your annotation",
+                "category": request_json["category_name"]}
     return JsonResponse(resp_obj)
 
 
@@ -1065,37 +1068,42 @@ def add_all_tiled_categories():
 @csrf_exempt
 @require_POST
 def delete_tile_label(request):
-    print(request)
+    user = request.user
+    print(user)
+    if not user.is_authenticated:
+        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+
     request_list = json.load(request)
-    print(request_list)
     to_delete = []
+    if len(request_list) == 0:
+        return JsonResponse({"status": "success", "message": f"Successfully deleted {len(request_list)} labels"}, safe=False)
     for request in request_list:
         northeast_Lat = request.get("northeast_lat")
         northeast_Lng = request.get("northeast_lng")
         southwest_Lat = request.get("southwest_lat")
         southwest_Lng = request.get("southwest_lng")
-
         category_name = request.get("category_name")
+
         if northeast_Lat is None or northeast_Lng is None or \
                 southwest_Lat is None or southwest_Lng is None or category_name is None:
-            return HttpResponseBadRequest("Missing required field")
+            return JsonResponse({"status": "failure", "message": "Failed. Missing required field."}, safe=False)
+
         category = CategoryType.objects.get(category_name=category_name)
-        json_str = json.loads(request.get('geojson'))
-        s = str(json_str["geometry"])
-        poly = GEOSGeometry(s)
+        poly = GEOSGeometry(str(json.loads(request.get('geoJSON'))['geometry']))
         tile_label = TiledGISLabel.objects.filter(category=category).filter(geometry__equals=poly)
 
-        if not tile_label:
-            return HttpResponseBadRequest('ERROR' + category_name)
+        if len(tile_label) < 1:
+            return JsonResponse({"status": "failure", "message": "Failed. Annotation not found."}, safe=False)
         if len(tile_label) > 1:
-            return HttpResponseBadRequest("Request ambigous")
+            return JsonResponse({"status": "failure", "message": "Failed. More than one Annotation found."}, safe=False)
         to_delete.append(tile_label[0])
 
     # Make sure all objects are okay to delete first
     # If there's an error don't change database
     for _label in to_delete:
         _label.delete()
-    return JsonResponse('Success', safe=False)
+
+    return JsonResponse({"status": "success", "message": f"Successfully deleted {len(to_delete)} labels"}, safe=False)
 
 
 @csrf_exempt

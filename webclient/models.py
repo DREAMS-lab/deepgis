@@ -145,6 +145,7 @@ class ImageFilter(models.Model):
         return 'ImageFilter: brightness:' + str(self.brightness) + ' contrast: ' + str(self.contrast)\
                + ' saturation: ' + str(self.saturation) + ' labeler: ' + str(self.labeler)
 
+
 class TiledLabel(models.Model):
     northeast_Lat = models.DecimalField(max_digits=17, decimal_places=14)
     northeast_Lng = models.DecimalField(max_digits=17, decimal_places=14)
@@ -166,8 +167,10 @@ class TiledLabel(models.Model):
         default="R"
     )
 
+
 class TileSet(models.Model):
     base_location = models.CharField(max_length=600)
+
 
 class Tile(models.Model):
     zoom_level = models.IntegerField()
