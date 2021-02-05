@@ -1,548 +1,77 @@
 <!DOCTYPE html>
-
 <html>
+
 <head>
-    <title>DeepGIS -- Rocks </title>
-    <script type="text/javascript" src="/static/scripts/dom-to-image.min.js"></script>
-
-    <script src="/static/scripts/leaflet/leaflet.js">
-
-        <
-        script
-        type = "text/javascript"
-        src = "/static/scripts/dom-to-image.min.js" ></script>
-    <link rel="stylesheet" href="/static/scripts/leaflet.draw/leaflet.draw.css"/>
-    <script src="/static/scripts/leaflet.draw/leaflet.draw.js"></script>
-    <script src="/static/scripts/jQuery/jquery-3.0.0.min.js"></script>
-    <script src="/static/scripts/index.js"></script>
-    <script src="/static/scripts/jQuery/jquery-3.0.0.min.js"></script>
-    <link rel="stylesheet" href="/static/scripts/leaflet/leaflet.css"/>
-
-    <!-- Make sure you put this AFTER Leaflet's CSS -->
-    </script>
-
-    <script type="text/javascript">
-
-        function project(lat, lng, zoom) {
-            var d = Math.PI / 180,
-                max = 1 - 1E-15,
-                sin = Math.max(Math.min(Math.sin(lat * d), max), -max),
-                scale = 256 * Math.pow(2, zoom);
-
-            var point = {
-                x: R * lng * d,
-                y: R * Math.log((1 + sin) / (1 - sin)) / 2
-            };
-            return point;
-        }
-
-    function tiled(num) {
-        return Math.floor(num / 256);
-    }
-    </script>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<title>DeepGIS</title>
+	<link rel="stylesheet" href="/static/css/style.css">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/css/bootstrap.min.css" integrity="sha384-Zug+QiDoJOrZ5t4lssLdxGhVrurbmBWopoEl+M6BdEfwnCJZtKxi1KgxUyJq13dy" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link href="/static/css/simple-sidebar.css" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
+	<script type="text/javascript' src='/static/scripts/jQuery/jquery-3.0.0.min.js"></script>
+	<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-mousewheel/3.1.13/jquery.mousewheel.min.js"></script>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
+	<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+	<link rel="stylesheet" href="/static/scripts/leaflet.draw/leaflet.draw.css" />
+	<script src="/static/scripts/leaflet.draw/leaflet.draw.js"></script>
+	<script src="https://cdn.jsdelivr.net/combine/npm/leaflet-freehandshapes@0.3.7/dist/leaflet-freehandshapes.min.js,npm/leaflet-freehandshapes@0.3.7"></script>
 </head>
-<body>
 
-
-Rock Traits Decision Support System: <br/>
-
-<div id="mapid" style="height: 800px; width: 1000px; float:left"></div>
-<div class="num_bins">Number of Bins
-    <input type="range" min="1" max="100" value="20" class="num_bins" id="num_bins">
-        <input type="range" min="1" max="100" value="20" class="num_bins" id="num_bins">
-
-    <div id="demo"></div>
-
-    <img id="div_hist"
-     src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
-     alt="Red dot img"/>
-</div>
-
-<div debug="debug"></div>
-<div style="height: 512px; width: 100px;float: left" id="">
-    <form style="margin:15px" id="class_select">
-        {% for category_name, color in categories.items %}
-        <label style="color:{{ color }}">
-            <input type="radio" name="label_class" value="{{ category_name }}">
-            {{ category_name }}
-        </label><br/>
-        {% endfor %}
-        <br/>
-        <br/>
-        <label>Current Zoom: </label><label id="currentZoomLabel">22</label>
-    </form>
-</div>
-
-
-<script type="text/javascript">
-
-
-    var atlantaTiles = L.tileLayer('/static/rock-tiles/raw/{z}/{x}/{y}.png', {
-        attribution: 'ASU, Ramon Arrowsmith',
-        maxZoom: 23,
-        id: 'mapbox.streets',
-        tms: true
-    });
-
-    var predictTiles = L.tileLayer('/static/rock-tiles/prediction/{z}/{x}/{y}.png', {
-        minZoom: 15,
-        maxZoom: 23,
-        id: 'mapbox.streets2',
-        tms: true
-    });
-
-    var map = L.map('mapid', {
-        minZoom: 15,
-        maxZoom: 23,
-        layers: [atlantaTiles],
-        updateWhenZooming:false,
-        updateWhenIdle: true,
-        preferCanvas: true
-
-    });
-
-    map.setView([37.45242778, -118.44222222], 23);
-    var geoData;
-
-
-    $.getJSON({
-        url: "get_all_tiled_labels/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
-            map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
-            "&southwest_lng=" + map.getBounds()._southWest.lng.toString(),
-        type: "GET",
-
-        success: function (data) {
-            geoData = data;
-            for (i = 0; i < geoData.length; i++) {
-                draw_shapes(geoData[i].geoJSON, geoData[0].geoJSON.type)
-            }
-        }
-
-
-    });
-
-
-
-
-
-    //Global vars:
-    var R = 6378137;
-    var sphericalScale = 0.5 / (Math.PI * R);
-
-    extractImages = function (map) {
-        bounds = map.getBounds();
-        //alert(bounds);
-        console.log(bounds);
-        var zoom = 23;
-
-        //north, west
-        var min = project(bounds._northEast.lat, bounds._southWest.lng, zoom);
-
-        //south, east
-        var max = project(bounds._southWest.lat, bounds._northEast.lng, zoom);
-
-
-        console.log(min);
-        console.log(max);
-        window.location.href = "/app/extract?minx=" + min.x + "&maxx=" + max.x + "&miny=" + min.y + "&maxy=" + max.y;
-    };
-
-
-    var drawnItems = L.featureGroup().addTo(map);
-
-    var drawControl = new L.Control.Draw({
-        edit: {
-            edit: false,
-            featureGroup: drawnItems,
-            poly: {
-                allowIntersection: false
-            }
-        },
-        draw: {
-            polyline: false,
-            marker: false,
-            circlemarker: false
-        }
-    });
-
-    drawControl.addTo(map);
-
-
-    var baseLayers = {};
-
-    var overlays = {
-        "Raster raw": atlantaTiles,
-        "Raster predictions": predictTiles,
-        "Vector annotations": drawnItems
-    };
-
-    L.control.layers(baseLayers, overlays,{collapsed:false}).addTo(map);
-
-
-    var printAndSendTrainImage = function(fileName, catergoryClassName){
-        //Print the map
-        console.log("Printing map");
-        map.removeLayer(drawnItems);
-        map.removeLayer(predictTiles);
-        printer.printMap('CurrentSize', 'test').then(function (result) {
-            imageData = result;
-
-            map.addLayer(drawnItems);
-            map.removeLayer(atlantaTiles);
-
-
-            printer.printMap('CurrentSize', 'test2').then(function (imResult) {
-                var requestObj = {};
-                maskData = imResult;
-                requestObj.image_blob = imageData;
-                requestObj.mask_blob = maskData;
-                requestObj.image_name = fileName;
-                requestObj.category_name = catergoryClassName;
-
-                map.addLayer(atlantaTiles);
-                map.addLayer(predictTiles);
-                fetch("../webclient/addTiledImage", {
-                    body: JSON.stringify(requestObj),
-                    headers: {
-                        'content-type': 'application/json'
-                    },
-                    method: 'POST'
-                }).then(function (resp) {
-                    console.log(resp)
-                })
-            })
-        })
-    }
-
-    //Initialize the easyPrint module
-
-    var printerOptions = {
-        sizeModes: ['Current'],
-        filename: 'myMap',
-        exportOnly: true,
-        position: 'bottomright',
-        buttonCallback: function(event){
-            var centerLatLng = map.getCenter();
-            var centerXY = project(centerLatLng.lat, centerLatLng.lng, map.getZoom());
-            var fileName = map.getZoom().toString() + "_" + centerXY.x.toString() + "_" + centerXY.y.toString();
-
-            console.log("Printing map from button click");
-            printAndSendTrainImage(fileName,"undefined");
-        }
-    };
-
-
-    var printer = L.easyPrint(printerOptions);
-    printer.addTo(map);
-
-    draw_shapes = function (geoJson, label_type) {
-        geoJson.properties.options.weight = 0.5;
-        if (label_type == "circle") {
-            circleLayer = L.circle([geoJson.geometry.coordinates[1], geoJson.geometry.coordinates[0]], geoJson.properties.options);
-            drawnItems.addLayer(circleLayer);
-        } else if (label_type.toLowerCase() == "rectangle") {
-            var rectLayer = L.rectangle([[geoJson.geometry.coordinates[0][0].slice().reverse(), geoJson.geometry.coordinates[0][1].slice().reverse(),
-                geoJson.geometry.coordinates[0][2].slice().reverse(), geoJson.geometry.coordinates[0][3].slice().reverse()]], geoJson.properties.options);
-            drawnItems.addLayer(rectLayer);
-        } else if (label_type.toLowerCase() == "polygon") {
-            coords = [];
-            for (j = 0; j < geoJson.geometry.coordinates.length; j++) {
-                coords.push([]);
-                for (k = 0; k < geoJson.geometry.coordinates[j].length; k++) {
-                    coords[j].push(geoJson.geometry.coordinates[j][k].slice().reverse());
-                }
-            }
-
-            var polyLayer = L.polygon(coords, geoJson.properties.options);
-
-            drawnItems.addLayer(polyLayer);
-        } else {
-            var geoJsonLayer = L.geoJSON(geoJson, geoJson.properties.options);
-            drawnItems.addLayer(geoJsonLayer);
-        }
-    };
-
-    var slider = document.getElementById("num_bins");
-    var output = document.getElementById("demo");
-    output.innerHTML = slider.value; // Display the default slider value
-    document.getElementById("demo").style.fontSize = "xx-large";
-
-    slider.oninput = function () {
-        output.innerHTML = this.value;
-
-    }
-    slider.onchange = function () {
-        output.innerHTML = this.value;
-        document.getElementById("num_bins").disabled = true;
-        var num_bins = output.innerHTML;
-        $.ajax({
-            url: "get_histogram_for_window/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
-                map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
-                "&southwest_lng=" + map.getBounds()._southWest.lng.toString() + "&number_of_bins=" + num_bins,
-            type: "GET",
-
-            success: function (data) {
-                $("#div_hist").attr('src', "data:image/png;base64, " + data)
-                document.getElementById("num_bins").disabled = false;
-
-
-            }
-
-
-        });
-    }
-
-
-
-    map.on("zoom",function(event){
-        var zoomLabel = $("#currentZoomLabel");
-        zoomLabel.text(map.getZoom().toString());
-    })
-
-    function base64toBlob(base64Data, contentType) {
-        contentType = contentType || '';
-        var sliceSize = 1024;
-        var byteCharacters = atob(base64Data);
-        var bytesLength = byteCharacters.length;
-        var slicesCount = Math.ceil(bytesLength / sliceSize);
-        var byteArrays = new Array(slicesCount);
-
-        for (var sliceIndex = 0; sliceIndex < slicesCount; ++sliceIndex) {
-            var begin = sliceIndex * sliceSize;
-            var end = Math.min(begin + sliceSize, bytesLength);
-
-            var bytes = new Array(end - begin);
-            for (var offset = begin, i = 0; offset < end; ++i, ++offset) {
-                bytes[i] = byteCharacters[offset].charCodeAt(0);
-            }
-            byteArrays[sliceIndex] = new Uint8Array(bytes);
-        }
-        return new Blob(byteArrays, {type: contentType});
-    }
-    function popUp(feature, layer) {
-        layer.bindPopup(feature.properties.name);
-    }
-
-    map.on(L.Draw.Event.CREATED, function (event) {
-        var layer = event.layer;
-        var geoJson = layer.toGeoJSON();
-
-        var ne_lat;
-        var ne_lng;
-        var sw_lat;
-        var sw_lng;
-
-        var propJSON = {};
-        console.log(event.layerType);
-        if (event.layerType == "circle") {
-            console.log(layer);
-            layer.addTo(map);
-            var bounds = layer.getBounds();
-            layer.removeFrom(map);
-            var northeast = bounds.getNorthEast();
-            var southwest = bounds.getSouthWest();
-            ne_lat = layer._latlng.lat + layer._mRadius;
-            ne_lng = layer._latlng.lng + layer._mRadius;
-            sw_lat = layer._latlng.lat - layer._mRadius;
-            sw_lng = layer._latlng.lng - layer._mRadius;
-            propJSON.latlng = layer._latlng;
-            propJSON.radius = layer._mRadius;
-            geoJson.properties.shape_type = "circle";
-            geoJson.properties.radius = layer._mRadius;
-        } else {
-            var bounds = layer.getBounds();
-            ne_lat = layer._bounds._northEast.lat;
-            ne_lng = layer._bounds._northEast.lng;
-            sw_lat = layer._bounds._southWest.lat;
-            sw_lng = layer._bounds._southWest.lng;
-            propJSON.latlngs = layer._latlngs[0];
-        }
-
-        //layer.options.weight = 0.5;
-
-        geoJson.properties.options = layer.options;
-
-        var radio_label_class = $("input:radio[name=label_class]:checked").val();
-
-        requestObj = {
-            northeast_lat: ne_lat,
-            northeast_lng: ne_lng,
-            southwest_lat: sw_lat,
-            southwest_lng: sw_lng,
-            zoom_level: map.getZoom(),
-            label_type: event.layerType,
-            category_name: radio_label_class,
-            geoJSON: geoJson,
-            propJSON: propJSON
-        };
-        console.log(requestObj);
-
-        draw_shapes(geoJson, event.layerType);
-// {#        if (event.layerType == "circle") {#}
-// {#            circleLayer = L.circle([geoJson.geometry.coordinates[1], geoJson.geometry.coordinates[0]], geoJson.properties.options);#}
-//
-// {#            drawnItems.addLayer(circleLayer);#}
-// {#            console.log('geoJson');#}
-// {##}
-// {#        } else {#}
-// {#            var geoJsonLayer = L.geoJSON(geoJson);#}
-// {#            drawnItems.addLayer(geoJsonLayer);#}
-// {#        }#}
-
-        //Data to be used for printing of images
-        var maskData;
-        var imageData;
-        var printedImageName;
-
-        centerLatLng = map.getCenter();
-        centerXY = project(centerLatLng.lat, centerLatLng.lng, map.getZoom());
-        printedImageName = map.getZoom().toString() + "_" + centerXY.x.toString() + "_" + centerXY.y.toString();
-        var checkBoxes = document.getElementsByClassName('leaflet-control-layers-selector');
-
-        var xhttp = new XMLHttpRequest();
-        xhttp.onreadystatechange = function () {
-            if (this.readyState == 4 && this.status == 200) {
-                printAndSendTrainImage(printedImageName, radio_label_class);
-            }
-        };
-
-        xhttp.open("POST", "/webclient/addTiledLabel", true);
-        xhttp.setRequestHeader("Content-Type", "application/json");
-        xhttp.send(JSON.stringify(requestObj));
-    });
-
-    map.on('moveend', function (e) {
-        $.getJSON({
-            url: "get_all_tiled_labels/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
-                map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
-                "&southwest_lng=" + map.getBounds()._southWest.lng.toString(),
-            type: "GET",
-
-            success: function (data) {
-                geoData = data;
-                // drawnItems.removeLayer(geoJsonLayer);
-                for (j = 0; j < drawnItems.getLayers().length; j++) {
-
-                }
-                for (i = 0; i < geoData.length; i++) {
-                    draw_shapes(geoData[i].geoJSON, geoData[i].geoJSON.type)
-                }
-            }
-
-
-        });
-        var num_bins = output.innerHTML;
-        $.ajax({
-            url: "get_histogram_for_window/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" +
-                map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() +
-                "&southwest_lng=" + map.getBounds()._southWest.lng.toString() + "&number_of_bins=" + num_bins,
-            type: "GET",
-
-            success: function (data) {
-                $("#div_hist").attr('src', "data:image/png;base64, " + data)
-
-
-            }
-
-
-        });
-
-
-    });
-
-    map.on('draw:deleted', function (e) {
-        console.log(e);
-        var request_obj = [];
-        var json = e.layers.toGeoJSON();
-        e.layers.eachLayer(function (layer) {
-            if (layer instanceof  L.Rectangle) {
-                var label_type = "Rectangle";
-            }
-            else if (layer instanceof L.Circle) {
-                //Workaround from https://github.com/Leaflet/Leaflet.draw/issues/701
-                layer._map = layer._map || map;
-                var label_type = "Circle";
-            }
-            else if (layer instanceof L.Polygon) {
-                var label_type = "Polygon";
-            }
-            else {
-                return //Not one of the possible label types
-            }
-            console.log(layer._map);
-            var bounds = layer.getBounds();
-            var jsonMessage = JSON.stringify(layer.toGeoJSON());
-
-            var northeast = bounds.getNorthEast();
-            var southwest = bounds.getSouthWest();
-            delete_layer_dict = {
-                northeast_lat: northeast.lat,
-                northeast_lng: northeast.lng,
-                southwest_lat: southwest.lat,
-                southwest_lng: southwest.lng,
-                label_type: label_type,
-                geojson: jsonMessage,
-                category_name: color_to_category[layer.options.color]
-            };
-            request_obj.push(delete_layer_dict);
-            if (layer._map != null) {
-                layer._map.removeLayer(layer);
-                console.log(layer);
-            }
-        });
-        console.log(request_obj);
-
-        $.ajax({
-            url: "/webclient/deleteTileLabels",
-            type: "POST",
-            dataType: "text",
-            data: JSON.stringify(request_obj),
-            success: function (data) {
-                console.log(data);
-            },
-            error: function (data) {
-                console.log(data)
-            }
-
-        });
-    });
-
-    $(document).ready(function () {
-        set_label_draw_color = function () {
-            var color = $(this).parent().css('color');
-            drawControl.setDrawingOptions({
-                rectangle: {
-                    shapeOptions: {
-                        color: color
-                    }
-                },
-                circle: {
-                    shapeOptions: {
-                        color: color
-                    }
-                },
-                polygon: {
-                    shapeOptions: {
-                        color: color
-                    }
-                }
-            });
-        };
-        $("input:radio[name=label_class]").on('change load', set_label_draw_color);
-        $("input:radio[name=label_class]:first").attr('checked', true).trigger('change');
-        color_to_category = {};
-        $("input:radio[name=label_class]").each(function () {
-            color_to_category[$(this).parent().css('color')] = $(this).val();
-        });
-
-
-    });
-</script>
-<br/>
-
-<!--
-<button style= "display: block; clear: both;" type="button" onclick="extractImages(mymap)">Extract Images</button>
-  -->
+<body bgcolor="#c0c0c0">
+	<div id="wrapper" class="toggled">
+		<div id="sidebar-wrapper">
+			<ul class="sidebar-nav">
+				<li class="sidebar-brand">
+					<a href="#" style="font-size: 150%; text-align: center;">DeepGIS</a>
+				</li>
+				<li data-toggle="collapse" data-target="#categories" class="collapsed active">
+					<p class="bold"><i class="fa fa-list-ul" aria-hidden="true"></i> Categories <span class="arrow"></span></p>
+				</li>
+				<form action="" class="sub-menu collapse show" id="categories">
+					<ul class="sidebar-nav2 sub-menu collapse show" id="categories_coll">
+					</ul>
+					<div style="margin-top: 5px; display: inline-grid; grid-template-rows: 50% 50%; width: 100%; justify-items:center;">
+						<input class="form-control form-control-sm " style="width: 85%;margin-bottom: 10px;" id="add_new_category" placeholder="Add a new category">
+						<button type="button" title="Add a new category for labels" id="category_submit" style="width:40%;" class="btn btn-primary btn-sm"><i class="fa fa-plus"></i>Add category</button>
+					</div>
+				</form>
+					<li data-toggle="collapse" data-target="#tools_coll" class="collapsed active">
+					<p class="bold"><i class="fa fa-cog" aria-hidden="true"></i> Free Hand tools <span class="arrow"></span></p>
+				</li>
+				<ul class="sidebar-nav2 sub-menu collapse show" id="tools_coll">
+					<button id="freeHandButton" title="Freehand" type="button" class="btn btn-success btn-sm"><i class="fa fa-check"></i>Enable Free Hand</button>
+				</ul>
+			</ul>
+		</div>
+		<div id="page-content-wrapper">
+			<div id="controls">
+				<div id="tips">
+					<p>
+						<h3>Instructions</h3>
+						<ul class="list-group">
+							<li class="list-group-item"> Use your best guess to annotate interesting features!
+								<br/>
+							<img src="https://github.com/Leaflet/Leaflet.draw/raw/develop/dist/images/spritesheet.png">
+								<br/>
+							Use polygon, rectangle from leaflet tool bar to annotate.
+								<br/>
+							Use free hand to annotate faster. Free hand disables after creating an annotation.
+								<br/>
+							To delete, click <i class="fa fa-trash-o" aria-hidden="true"></i>icon, double click an already annotated area and click save button.
+								<br/>
+						</ul>
+					<p>
+				</div>
+			</div>
+			<div id="map" style="height: 800px; width: 1000px; float:left"></div>
+			<a href="/logout" class="btn btn-danger logoutBtn"><i class="fa fa-sign-out"></i>Logout </a>
+		    <div id="snackbar"></div>
+        </div>
+	</div>
+	<script src="/static/scripts/webclient/map_label.js"></script>
 </body>
-</html>
 
+</html>

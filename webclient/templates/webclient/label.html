@@ -966,11 +966,6 @@
 		var output = [];
 		$('#categories_coll')[0].html = '';
 		$.each(categories, function(i, val) {
-			// cat_list_item = '<li style="display: inline-block; padding-left: 42px; width: 100%;"><input type="radio" style="float: left;margin-top: 11px;display: block;" name="category_select" value="' + val + '">' +
-			// ' <label style="float: left;" for="' + val + '"><table style="width:100%"><tr><td><p>'+ val +
-			// '</p></td><td><p><span class="circle" style="color:' + colors[i] + '; background-color:' + colors[i] +
-			// ';"></span></p></td></tr></table></label></li>';
-
 			cat_list_item = '<li class="grid">' +
 			'<input type="radio" name="category_select" value="' + val + '" id="'+ val +'">' +
 			'<label for="' + val + '">'+ val + '</label>'+
@@ -981,12 +976,9 @@
 		});
 		$('#categories_coll').html(output.join(''));
 		$("input:radio[name=category_select]:first").attr('checked', true);
-		//$("#categories").data("categories", categories);
-		//$('#categoryName').html(response.categories[0]);
 
 		$('#image_name').html("Image name: " + image_name);
 		$('#image_info_name').html("Image: " + image_path + image_name);
-		// $('#image_info_path').html("Image path: " + image_path);
 		globals.create_groups_shapes(categories, colors, shapes);
 
 	}
