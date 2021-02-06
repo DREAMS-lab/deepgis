@@ -6,7 +6,6 @@ from django.utils.html import format_html
 
 
 
-
 admin.site.register(Image)
 #admin.site.register(ImageLabel)
 admin.site.register(ImageSourceType)
@@ -15,7 +14,7 @@ admin.site.register(ImageFilter)
 admin.site.register(Color)
 admin.site.register(TiledLabel)
 admin.site.register(TiledGISLabel)
-
+admin.site.register(RasterImage)
 
 class CategoryLabelInline(admin.TabularInline):
     model = CategoryLabel
