@@ -10,15 +10,18 @@ from django.contrib.postgres.fields import JSONField, ArrayField
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.db import models
 
+
 class Color(models.Model):
     red = models.PositiveSmallIntegerField(default=0, validators=[MaxValueValidator(255)])
     green = models.PositiveSmallIntegerField(default=0, validators=[MaxValueValidator(255)])
     blue = models.PositiveSmallIntegerField(default=0, validators=[MaxValueValidator(255)])
+
     class Meta:
         unique_together = ('red', 'green', 'blue')
 
     def __str__(self):
         return "rgb({}, {}, {})".format(self.red, self.green, self.blue)
+
 
 def get_default_Color():
     default_Color = Color.objects.all()
@@ -28,6 +31,7 @@ def get_default_Color():
         default_Color = Color()
         default_Color.save()
     return default_Color.id
+
 
 def get_color():
     if Color.objects.all().count() <= 1:
@@ -39,9 +43,10 @@ def get_color():
     if query:
         return query[0]
     else:
-        #return random color
+        # return random color
         i = random.randrange(Color.objects.count())
         return Color.objects.all()[i]
+
 
 class CategoryType(models.Model):
     category_name = models.CharField(default='unknown', max_length=100, unique=True)
@@ -64,7 +69,7 @@ class CategoryType(models.Model):
 
 
 class ImageSourceType(models.Model):
-    description = models.CharField(default='unknown',max_length=200, unique=True)
+    description = models.CharField(default='unknown', max_length=200, unique=True)
     pub_date = models.DateTimeField(default=datetime.now, blank=True)
 
     def __str__(self):
@@ -79,17 +84,18 @@ class Image(models.Model):
     pub_date = models.DateTimeField(default=datetime.now, blank=True)
     width = models.PositiveSmallIntegerField(default=1920)
     height = models.PositiveSmallIntegerField(default=1080)
-    #TODO: Cascade if last entry is deleted
+    # TODO: Cascade if last entry is deleted
     categoryType = models.ManyToManyField(CategoryType)
 
     class Meta:
         unique_together = ('name', 'path')
+
     def __str__(self):
         return 'Name: ' + self.name
 
 
 class Labeler(models.Model):
-    user = models.OneToOneField(User,on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return str(self.user)
@@ -105,7 +111,7 @@ class ImageWindow(models.Model):
         unique_together = ('x', 'y', 'width', 'height')
 
     def __str__(self):
-        return '(x,y)=(%d,%d), width: %d, height: %d' %(self.x,self.y,self.width, self.height)
+        return '(x,y)=(%d,%d), width: %d, height: %d' % (self.x, self.y, self.width, self.height)
 
 
 def getDefaultImageWindowId():
@@ -127,7 +133,7 @@ class ImageLabel(models.Model):
     timeTaken = models.PositiveIntegerField(null=True, default=None)
 
     def __str__(self):
-        return 'Image: ' + self.parentImage.name  + ' | Labeler: ' + str(self.labeler) + ' | Date: ' + str(self.pub_date)
+        return 'Image: ' + self.parentImage.name + ' | Labeler: ' + str(self.labeler) + ' | Date: ' + str(self.pub_date)
 
 
 class CategoryLabel(models.Model):
@@ -147,7 +153,7 @@ class ImageFilter(models.Model):
     labeler = models.ForeignKey(Labeler, on_delete=models.CASCADE, null=True, blank=True, default=None)
 
     def __str__(self):
-        return 'ImageFilter: brightness:' + str(self.brightness) + ' contrast: ' + str(self.contrast)\
+        return 'ImageFilter: brightness:' + str(self.brightness) + ' contrast: ' + str(self.contrast) \
                + ' saturation: ' + str(self.saturation) + ' labeler: ' + str(self.labeler)
 
 
@@ -219,5 +225,3 @@ class TiledGISLabel(models.Model):
         default="R"
     )
     geometry = models.GeometryField()
-
-

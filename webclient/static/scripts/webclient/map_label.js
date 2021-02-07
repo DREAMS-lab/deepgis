@@ -1,5 +1,8 @@
 window.globals = {};
-//function to update category properties when new categories are added
+window.globals.rasters = [];
+window.globals.layers = {};
+window.globals.active_layer = "";
+
 function updateCategoryProperties() {
     $.ajax({
         url: "/webclient/getCategoryInfo",
@@ -71,36 +74,63 @@ function showSnackBar(text) {
     }, 6000);
 }
 
-// Add categories to the main page
 updateCategoryProperties();
 
-var raster1 = L.tileLayer('/static/outputfolder1/{z}/{x}/{y}.png', {
-    attribution: 'ASU, Ramon Arrowsmith',
-    minZoom: 1,
-    maxZoom: 7,
-    noWrap: true,
-    id: 'mapbox.streets',
-    tms: true
-});
-
 var map = L.map('map', {
-    center: [39.73, -104.99],
     minZoom: 1,
-    maxZoom: 7,
-    layers: [raster1],
+    maxZoom: 24,
     updateWhenZooming:false,
     updateWhenIdle: true,
     preferCanvas: true
 });
 
-map.setView([-50, -50], 2);
+map.on('baselayerchange', function (e) {
+    window.globals.active_layer = e.name;
+});
 
-var baseLayers = {
-    "Raster 1": raster1,
-};
+function updateRaster(map) {
+    $.ajax({
+        url: "/webclient/getRasterInfo",
+        type: "GET",
+        dataType: "json",
+        success: function(response) {
+            for (i = 0; i < response.message.length; i++) {
+                layer = L.tileLayer(response.message[i].path +'/{z}/{x}/{y}.png', {
+                    attribution: response.message[i].attribution,
+                    minZoom: response.message[i].minZoom,
+                    maxZoom: response.message[i].maxZoom,
+                    id: 'mapbox.streets',
+                    noWrap: true,
+                    tms: true
+                });
+                map.setView(response.message[i].lat_lng, 18);
+                window.globals.rasters.push(layer);
+                window.globals.layers[response.message[i].name] = layer;
+            }
+            // Add mapbox to know where the image is
+            mapbox = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+                attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+                maxZoom: 23,
+                id: 'mapbox/satellite-streets-v9',
+                tileSize: 512,
+                zoomOffset: -1,
+                accessToken: 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw'
+            })
+            window.globals.layers["mapbox/satellite-streets-v9"] = mapbox;
+            mapbox.addTo(map);
 
+            L.control.layers(window.globals.layers, {}).addTo(map);
+            window.globals.rasters.forEach(function(layer) {
+                layer.addTo(map);
+            });
+        },
+        error: function(xhr, errmsg, err) {
+            alert(xhr.status + ": " + xhr.responseText);
+        }
+    });
+}
 
-L.control.layers(baseLayers, {}).addTo(map);
+updateRaster(map);
 
 var drawnItems = L.featureGroup().addTo(map);
 
@@ -124,7 +154,6 @@ var drawControl = new L.Control.Draw({
         circle: false
     }
 });
-
 
 drawControl.addTo(map);
 
@@ -156,18 +185,6 @@ draw_shapes = function(geoJson, label_type) {
     }
 };
 
-$.getJSON({
-    url: "get_all_tiled_labels/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" + map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() + "&southwest_lng=" + map.getBounds()._southWest.lng.toString(),
-    type: "GET",
-    success: function(data) {
-        geoData = data;
-        for (i = 0; i < geoData.length; i++) {
-            draw_shapes(geoData[i].geoJSON, geoData[0].geoJSON.type)
-        }
-    }
-});
-
-
 function project(lat, lng, zoom) {
     var d = Math.PI / 180,
         max = 1 - 1E-15,
@@ -179,8 +196,6 @@ function project(lat, lng, zoom) {
     };
     return point;
 }
-
-
 
 $('#freeHandButton').click(freeHand);
 
@@ -204,6 +219,7 @@ function freeHand() {
         drawer.setMode('add');
         drawer.on('layeradd', function(data) {
             drawer.setMode('view');
+            console.log(data);
             var layer = data.layer;
             var geoJson = layer.toGeoJSON();
             var label_type = "polygon";
@@ -222,9 +238,11 @@ function freeHand() {
                 southwest_lng: sw_lng,
                 zoom_level: map.getZoom(),
                 label_type: label_type,
+                raster: window.globals.active_layer,
                 category_name: radio_label_class,
                 geoJSON: geoJson
             };
+            console.log(requestObj);
 
             $.ajax({
                 url: "/webclient/addTiledLabel",
@@ -251,7 +269,6 @@ function freeHand() {
     }
 }
 
-
 map.on(L.Draw.Event.CREATED, function(event) {
     var layer = event.layer;
     var geoJson = layer.toGeoJSON();
@@ -260,6 +277,10 @@ map.on(L.Draw.Event.CREATED, function(event) {
     var sw_lat;
     var sw_lng;
     var propJSON = {};
+    if (window.globals.active_layer == "") {
+        showSnackBar("No active raster layer present.");
+        return;
+    }
 
     if (event.layerType == "circle") {
         layer.addTo(map);
@@ -294,6 +315,7 @@ map.on(L.Draw.Event.CREATED, function(event) {
         zoom_level: map.getZoom(),
         label_type: event.layerType,
         category_name: radio_label_class,
+        raster: window.globals.active_layer,
         geoJSON: geoJson
     };
     draw_shapes(geoJson, event.layerType);
@@ -361,6 +383,80 @@ map.on('draw:deleted', function(e) {
     });
 });
 
+window.globals.chart = $("#histogram").get(0).getContext("2d");
+var histogram_data = {
+    labels: [0, 1, 2, 3, 4, 5, 6, 7],
+    datasets: [
+        {
+            label: "Count per polygon area",
+            fill: false,
+            lineTension: 0.1,
+            backgroundColor: "rgba(75,192,192,0.4)",
+            borderColor: "rgba(75,192,192,1)",
+            borderCapStyle: 'butt',
+            borderDash: [],
+            borderDashOffset: 0.0,
+            borderJoinStyle: 'miter',
+            pointBorderColor: "rgba(75,192,192,1)",
+            pointBackgroundColor: "#fff",
+            pointBorderWidth: 1,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: "rgba(75,192,192,1)",
+            pointHoverBorderColor: "rgba(220,220,220,1)",
+            pointHoverBorderWidth: 2,
+            pointRadius: 5,
+            pointHitRadius: 10,
+            data: [0, 0, 0, 0, 0, 0, 0],
+        }
+    ]
+};
+
+window.globals.histogram_chart = Chart.Line(window.globals.chart, {
+	data: histogram_data,
+    options: {
+        showLines: true
+    }
+});
+
+map.on('moveend', function(e) {
+    $.getJSON({
+        url: "getAllTiledLabels/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" + map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() + "&southwest_lng=" + map.getBounds()._southWest.lng.toString(),
+        type: "GET",
+        success: function(data) {
+            geoData = data;
+            for(j = 0; j < drawnItems.getLayers().length; j++) {}
+            for(i = 0; i < geoData.length; i++) {
+                draw_shapes(geoData[i].geoJSON, geoData[i].geoJSON.type)
+            }
+        }
+    });
+    bins = $("#customRange2")[0].valueAsNumber;
+    $.ajax({
+        url: "getHistogramWindow/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" + map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() + "&southwest_lng=" + map.getBounds()._southWest.lng.toString() + "&number_of_bins=" + bins,
+        type: "GET",
+        success: function(data) {
+            window.globals.histogram_chart.data.labels = data.x;
+            window.globals.histogram_chart.data.datasets[0].data = data.y;
+            window.globals.histogram_chart.update();
+        }
+    });
+});
+
+$("#customRange2").on( "click", function() {
+    bins = $("#customRange2")[0].valueAsNumber;
+    $("#customRange2label").text("Histogram Bins: " + $("#customRange2")[0].value);
+    console.log(bins);
+    $.ajax({
+        url: "getHistogramWindow/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" + map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() + "&southwest_lng=" + map.getBounds()._southWest.lng.toString() + "&number_of_bins=" + bins,
+        type: "GET",
+        success: function(data) {
+            window.globals.histogram_chart.data.labels = data.x;
+            window.globals.histogram_chart.data.datasets[0].data = data.y;
+            window.globals.histogram_chart.update();
+        }
+    });
+});
+
 $("#category_submit").click(function() {
     $("#category_submit").attr("disabled", true);
     if ($("#add_new_category").val()) {
@@ -391,7 +487,6 @@ $("#category_submit").click(function() {
     }
     $("#category_submit").attr("disabled", false);
 });
-
 
 function hexToRgb(hex) {
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);

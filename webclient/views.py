@@ -40,8 +40,8 @@ from webclient import helper_ops
 from webclient.image_ops.convert_images import convert_label_to_image_stream, convert_image_labels_to_json, \
     convert_image_labels_to_svg_array, combine_all_labels
 from webclient.models import Image, CategoryType, CategoryLabel, User, Labeler, ImageWindow, ImageLabel, GEOSGeometry
-from webclient.models import ImageSourceType, ImageFilter, datetime, get_color, TileSet, TiledLabel, TiledGISLabel
-
+from webclient.models import ImageSourceType, ImageFilter, datetime, get_color, TileSet, TiledLabel, TiledGISLabel, \
+    RasterImage
 
 MODEL_SELECTED = None
 
@@ -534,7 +534,8 @@ def get_annotations(request):
     image_path = request.GET['image_name']
     width = request.GET['width']
     height = request.GET['height']
-    masks, labels = get_masks('/app/webclient' + image_path, int(request.GET['x']), int(request.GET['y']), int(width), int(height))
+    masks, labels = get_masks('/app/webclient' + image_path, int(request.GET['x']), int(request.GET['y']), int(width),
+                              int(height))
     if "status" in masks:
         return JsonResponse(masks, safe=False)
     svg_strings = []
@@ -567,7 +568,7 @@ def get_new_image(request):
         return HttpResponseBadRequest("No images in database")
 
     labels_per_image = crop_images.NUM_WINDOW_COLS * \
-                     crop_images.NUM_WINDOW_ROWS * crop_images.NUM_LABELS_PER_WINDOW
+                       crop_images.NUM_WINDOW_ROWS * crop_images.NUM_LABELS_PER_WINDOW
 
     images = Image.objects.all().annotate(count=Count('imagelabel')).filter(count__lt=labels_per_image)
     user = request.user
@@ -673,7 +674,7 @@ def add_image(request):
             cat.save()
 
     image_list = Image.objects.all().filter(name=request.POST['image_name'], path=path,
-                                           description=request.POST.get('description', default=''), source=source_type)
+                                            description=request.POST.get('description', default=''), source=source_type)
     if image_list:
         img = image_list[0]
     else:
@@ -911,6 +912,51 @@ def print_label_data():
 
 @csrf_exempt
 @require_POST
+def add_raster(request):
+    request_json = json.load(request)
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    raster_image = RasterImage()
+    raster_image.name = request_json["name"]
+    raster_image.path = request_json["path"]
+    raster_image.attribution = request_json["attribution"]
+    raster_image.minZoom = request_json["minZoom"]
+    raster_image.maxZoom = request_json["maxZoom"]
+    raster_image.resolution = request_json["resolution"]
+    raster_image.save()
+    resp_obj = {"status": "success",
+                "message": "Successfully added the raster image"}
+    return JsonResponse(resp_obj)
+
+
+@csrf_exempt
+@require_GET
+def get_raster_info(request):
+    user = request.user
+    print(user)
+    if not user.is_authenticated:
+        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    rasters = []
+    data = RasterImage.objects.all()
+    for raster in data:
+        single_raster = {
+            "name": raster.name,
+            "path": raster.path,
+            "attribution": raster.attribution,
+            "minZoom": raster.minZoom,
+            "maxZoom": raster.maxZoom,
+            "resolution": raster.resolution,
+            "lat_lng": [raster.latitude, raster.longitude]
+        }
+        rasters.append(single_raster)
+    resp_obj = {"status": "success",
+                "message": rasters}
+    return JsonResponse(resp_obj)
+
+
+@csrf_exempt
+@require_POST
 def add_tiled_label(request):
     request_json = json.load(request)
     user = request.user
@@ -922,6 +968,10 @@ def add_tiled_label(request):
     tiled_label.southwest_Lat = request_json["southwest_lat"]
     tiled_label.southwest_Lng = request_json["southwest_lng"]
     tiled_label.zoom_level = request_json["zoom_level"]
+    raster = RasterImage.objects.filter(name=request_json["raster"])
+    if len(raster) == 0 or len(raster) > 1:
+        return JsonResponse({"status": "failure", "message": "0 or multiple raster found. "}, safe=False)
+    tiled_label.parent_raster = raster[0]
     tiled_label.category = CategoryType.objects.get(category_name=request_json["category_name"])
     tiled_label.label_type = \
         [K for (K, v) in TiledGISLabel.label_type_enum if request_json["label_type"].lower() == v.lower()][0]
@@ -937,6 +987,11 @@ def add_tiled_label(request):
 
 @csrf_exempt
 def get_all_tiled_labels(request):
+    user = request.user
+    print(user)
+    if not user.is_authenticated:
+        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+
     xmin = float(request.GET.get("southwest_lng"))
     ymin = float(request.GET.get("southwest_lat"))
     xmax = float(request.GET.get("northeast_lng"))
@@ -951,7 +1006,12 @@ def get_all_tiled_labels(request):
     for polygon in previous_boxes:
         new_polygon = new_polygon.union(polygon)
 
-    query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox).filter(~Q(geometry__within=new_polygon))
+    _user = User.objects.filter(username=user)[0]
+    if _user.is_staff or _user.is_superuser:
+        query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox).filter(~Q(geometry__within=new_polygon))
+    else:
+        query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox, labeler=_user).filter(
+            ~Q(geometry__within=new_polygon))
 
     for tiled_label in query_set:
         response_dict = {"northeast_lat": tiled_label.northeast_Lat, "northeast_lng": tiled_label.northeast_Lng,
@@ -973,29 +1033,29 @@ def get_histogram_for_window(request):
     ymax = float(request.GET.get("northeast_lat"))
     number_of_bins = int(request.GET.get("number_of_bins"))
 
+    raster = str(request.GET.get("raster"))
+    raster = RasterImage.objects.filter(name=raster)
+
+    if len(raster) == 1 and raster[0].resolution != -1:
+        resolution = raster[0].resolution
+    else:
+        resolution = 1
+
     bbox = (xmin, ymin, xmax, ymax)
+    print(bbox)
     current_bbox = Polygon.from_bbox(bbox)
     result_set = []
     query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox)
     for polygon in query_set:
-        geometry = polygon.geometry
-        geometry.srid = 4326
-        geometry.transform(26911)
-        area = geometry.area
-        result_set.append(area)
-
-    area_list = np.asarray(result_set)
-
-    plt.clf()
-    plt.hist(area_list, number_of_bins)
-    plt.xlabel('Rock area (sq. m)')
-    plt.ylabel('Count')
-    plt.tight_layout()
-    response = io.BytesIO()
-    plt.savefig(response, format='png')
-    response.seek(0)
-    encoded_string = base64.b64encode(response.read())
-    return HttpResponse(encoded_string, 'contentType: image/PNG')
+        result_set.append(GEOSGeometry(polygon.geometry).area)
+    result = np.histogram(np.array(result_set).astype(np.float32), bins=np.arange(number_of_bins), density=True)
+    print(result)
+    x = []
+    y = []
+    for i in range(result[0].shape[0]):
+        x.append(float(result[1].item(i)))
+        y.append(float(result[0].item(i)))
+    return JsonResponse({"status": "success", "y": y, "x": x}, safe=False)
 
 
 def get_window_tiled_labels(request):
@@ -1076,7 +1136,8 @@ def delete_tile_label(request):
     request_list = json.load(request)
     to_delete = []
     if len(request_list) == 0:
-        return JsonResponse({"status": "success", "message": f"Successfully deleted {len(request_list)} labels"}, safe=False)
+        return JsonResponse({"status": "success", "message": f"Successfully deleted {len(request_list)} labels"},
+                            safe=False)
     for request in request_list:
         northeast_lat = request.get("northeast_lat")
         northeast_lng = request.get("northeast_lng")
