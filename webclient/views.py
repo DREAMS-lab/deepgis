@@ -968,6 +968,9 @@ def add_tiled_label(request):
     tiled_label.southwest_Lat = request_json["southwest_lat"]
     tiled_label.southwest_Lng = request_json["southwest_lng"]
     tiled_label.zoom_level = request_json["zoom_level"]
+    _user = User.objects.filter(username=user)[0]
+    _labeler = Labeler.objects.filter(user=_user)[0]
+    tiled_label.labeler = _labeler
     raster = RasterImage.objects.filter(name=request_json["raster"])
     if len(raster) == 0 or len(raster) > 1:
         return JsonResponse({"status": "failure", "message": "0 or multiple raster found. "}, safe=False)

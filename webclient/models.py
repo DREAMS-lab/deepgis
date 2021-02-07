@@ -206,7 +206,7 @@ class TiledGISLabel(models.Model):
     northeast_Lng = models.DecimalField(max_digits=17, decimal_places=14)
     southwest_Lat = models.DecimalField(max_digits=17, decimal_places=14)
     southwest_Lng = models.DecimalField(max_digits=17, decimal_places=14)
-    parent_raster = models.ForeignKey(RasterImage, on_delete=models.CASCADE, default=None)
+    parent_raster = models.ForeignKey(RasterImage, on_delete=models.CASCADE, null=True, blank=True, default=None)
     pub_date = models.DateTimeField(default=datetime.now, blank=True)
     labeler = models.ForeignKey(Labeler, on_delete=models.CASCADE, null=True, blank=True, default=None)
     zoom_level = models.PositiveSmallIntegerField(default=23)

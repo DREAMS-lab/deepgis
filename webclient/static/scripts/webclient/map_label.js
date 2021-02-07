@@ -116,7 +116,7 @@ function updateRaster(map) {
                 zoomOffset: -1,
                 accessToken: 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw'
             })
-            window.globals.layers["mapbox/satellite-streets-v9"] = mapbox;
+//            window.globals.layers["mapbox/satellite-streets-v9"] = mapbox;
             mapbox.addTo(map);
 
             L.control.layers(window.globals.layers, {}).addTo(map);
