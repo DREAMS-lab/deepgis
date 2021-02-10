@@ -1045,14 +1045,12 @@ def get_histogram_for_window(request):
         resolution = 1
 
     bbox = (xmin, ymin, xmax, ymax)
-    print(bbox)
     current_bbox = Polygon.from_bbox(bbox)
     result_set = []
     query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox)
     for polygon in query_set:
         result_set.append(GEOSGeometry(polygon.geometry).area)
     result = np.histogram(np.array(result_set).astype(np.float32), bins=np.arange(number_of_bins), density=True)
-    print(result)
     x = []
     y = []
     for i in range(result[0].shape[0]):
@@ -1158,7 +1156,7 @@ def delete_tile_label(request):
 
         if len(tile_label) < 1:
             return JsonResponse({"status": "failure", "message": "Failed. Annotation not found."}, safe=False)
-        if len(tile_label) > 1:
+        if len(tile_label) == 2:
             return JsonResponse({"status": "failure", "message": "Failed. More than one Annotation found."}, safe=False)
         to_delete.append(tile_label[0])
 

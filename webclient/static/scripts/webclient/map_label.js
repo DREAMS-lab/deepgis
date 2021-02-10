@@ -26,8 +26,8 @@ function updateCategoryProperties() {
             set_label_draw_color = function() {
                 if ($('#freeHandButton').hasClass('btn-warning')) {
                     freeHand();
-                    drawnItems.removeLayer(window.globals.lastLayer);
-                    freeHand();
+                    drawer = drawnItems.getLayer(window.globals.lastLayer);
+                    drawer.setMode('view');
                 } else {
                     var color = rgbToHex($(this).attr('data-color'));
                     drawControl.setDrawingOptions({
@@ -78,7 +78,7 @@ updateCategoryProperties();
 
 var map = L.map('map', {
     minZoom: 1,
-    maxZoom: 24,
+    maxZoom: 28,
     updateWhenZooming:false,
     updateWhenIdle: true,
     preferCanvas: true
@@ -103,7 +103,7 @@ function updateRaster(map) {
                     noWrap: true,
                     tms: true
                 });
-                map.setView(response.message[i].lat_lng, 18);
+                map.setView(response.message[i].lat_lng, 23);
                 window.globals.rasters.push(layer);
                 window.globals.layers[response.message[i].name] = layer;
             }
@@ -134,10 +134,6 @@ updateRaster(map);
 
 var drawnItems = L.featureGroup().addTo(map);
 
-L.EditToolbar.Delete.include({
-    removeAllLayers: false
-});
-
 var drawControl = new L.Control.Draw({
     edit: {
         edit: false,
@@ -151,7 +147,7 @@ var drawControl = new L.Control.Draw({
         polyline: false,
         marker: false,
         circlemarker: false,
-        circle: false
+        circle: true
     }
 });
 
@@ -159,7 +155,7 @@ drawControl.addTo(map);
 
 draw_shapes = function(geoJson, label_type) {
     geoJson.properties.options.weight = 0.5;
-    if (label_type == "circle") {
+    if (label_type == "circle" || label_type == "Circle") {
         circleLayer = L.circle([geoJson.geometry.coordinates[1], geoJson.geometry.coordinates[0]], geoJson.properties.options);
         drawnItems.addLayer(circleLayer);
     } else if (label_type.toLowerCase() == "rectangle") {
@@ -206,31 +202,40 @@ function freeHand() {
         $('#freeHandButton').addClass('btn-warning');
 
         var color = rgbToHex($("input:radio[name=category_select]:checked").attr('data-color'));
-        var drawer = new L.FreeHandShapes({
+        var drawer = new L.FreeHandShapes();
+        drawer.options = {
             polygon: {
+                smoothFactor: 0.000000000001,
+                fillOpacity : 0.25,
+                noClip : false,
                 color: color,
-                weight: 0.5,
-                fillOpacity: 0.25,
-                smoothFactor: 0.01,
-                noClip: false
-            }
-        });
+            },
+            polyline : {
+                color: color,
+                opacity: 0.25,
+                smoothFactor: 0.000000000001,
+                noClip : false,
+                clickable : false,
+                weight: 1
+            },
+            simplify_tolerance: 0.000000000001,
+            merge_polygons: false,
+            concave_polygons: true
+        };
 
         drawer.setMode('add');
         drawer.on('layeradd', function(data) {
             drawer.setMode('view');
-            console.log(data);
             var layer = data.layer;
-            var geoJson = layer.toGeoJSON();
+            var geoJson = layer.toGeoJSON(20);
             var label_type = "polygon";
             var bounds = layer.getBounds();
-            var ne_lat = layer._bounds._northEast.lat;
-            var ne_lng = layer._bounds._northEast.lng;
-            var sw_lat = layer._bounds._southWest.lat;
-            var sw_lng = layer._bounds._southWest.lng;
+            var ne_lat = bounds._northEast.lat;
+            var ne_lng = bounds._northEast.lng;
+            var sw_lat = bounds._southWest.lat;
+            var sw_lng = bounds._southWest.lng;
             geoJson.properties.options = layer.options;
             var radio_label_class = $("input:radio[name=category_select]:checked").val();
-            console.log(radio_label_class);
             requestObj = {
                 northeast_lat: ne_lat,
                 northeast_lng: ne_lng,
@@ -242,7 +247,6 @@ function freeHand() {
                 category_name: radio_label_class,
                 geoJSON: geoJson
             };
-            console.log(requestObj);
 
             $.ajax({
                 url: "/webclient/addTiledLabel",
@@ -271,41 +275,22 @@ function freeHand() {
 
 map.on(L.Draw.Event.CREATED, function(event) {
     var layer = event.layer;
-    var geoJson = layer.toGeoJSON();
+    var geoJson = layer.toGeoJSON(20);
+    geoJson.properties.options = layer.options;
     var ne_lat;
     var ne_lng;
     var sw_lat;
     var sw_lng;
-    var propJSON = {};
     if (window.globals.active_layer == "") {
         showSnackBar("No active raster layer present.");
         return;
     }
-
-    if (event.layerType == "circle") {
-        layer.addTo(map);
-        var bounds = layer.getBounds();
-        layer.removeFrom(map);
-        var northeast = bounds.getNorthEast();
-        var southwest = bounds.getSouthWest();
-        ne_lat = layer._latlng.lat + layer._mRadius;
-        ne_lng = layer._latlng.lng + layer._mRadius;
-        sw_lat = layer._latlng.lat - layer._mRadius;
-        sw_lng = layer._latlng.lng - layer._mRadius;
-        propJSON.latlng = layer._latlng;
-        propJSON.radius = layer._mRadius;
-        geoJson.properties.shape_type = "circle";
-        geoJson.properties.radius = layer._mRadius;
-    } else {
-        var bounds = layer.getBounds();
-        ne_lat = layer._bounds._northEast.lat;
-        ne_lng = layer._bounds._northEast.lng;
-        sw_lat = layer._bounds._southWest.lat;
-        sw_lng = layer._bounds._southWest.lng;
-        propJSON.latlngs = layer._latlngs[0];
-    }
-    //layer.options.weight = 0.5;
-    geoJson.properties.options = layer.options;
+    layer.addTo(map);
+    var bounds = layer.getBounds();
+    ne_lat = bounds._northEast.lat;
+    ne_lng = bounds._northEast.lng;
+    sw_lat = bounds._southWest.lat;
+    sw_lng = bounds._southWest.lng;
     var radio_label_class = $("input:radio[name=category_select]:checked").val();
     requestObj = {
         northeast_lat: ne_lat,
@@ -318,7 +303,7 @@ map.on(L.Draw.Event.CREATED, function(event) {
         raster: window.globals.active_layer,
         geoJSON: geoJson
     };
-    draw_shapes(geoJson, event.layerType);
+//    draw_shapes(geoJson, event.layerType);
     $.ajax({
         url: "/webclient/addTiledLabel",
         type: "POST",
@@ -335,9 +320,8 @@ map.on(L.Draw.Event.CREATED, function(event) {
 });
 
 map.on('draw:deleted', function(e) {
-    console.log(e);
     var request_obj = [];
-    var json = e.layers.toGeoJSON();
+    var json = e.layers.toGeoJSON(20);
     e.layers.eachLayer(function(layer) {
         if (layer instanceof L.Rectangle) {
             var label_type = "rectangle";
@@ -351,7 +335,7 @@ map.on('draw:deleted', function(e) {
             return; //Not one of the possible label types
         }
         var bounds = layer.getBounds();
-        var jsonMessage = JSON.stringify(layer.toGeoJSON());
+        var jsonMessage = JSON.stringify(layer.toGeoJSON(20));
         var northeast = bounds.getNorthEast();
         var southwest = bounds.getSouthWest();
 
@@ -425,10 +409,10 @@ map.on('moveend', function(e) {
         success: function(data) {
             geoData = data;
             for(j = 0; j < drawnItems.getLayers().length; j++) {}
-            for(i = 0; i < geoData.length; i++) {
-                draw_shapes(geoData[i].geoJSON, geoData[i].geoJSON.type)
+                for(i = 0; i < geoData.length; i++) {
+                    draw_shapes(geoData[i].geoJSON, geoData[i].label_type)
+                }
             }
-        }
     });
     bins = $("#customRange2")[0].valueAsNumber;
     $.ajax({
@@ -445,7 +429,6 @@ map.on('moveend', function(e) {
 $("#customRange2").on( "click", function() {
     bins = $("#customRange2")[0].valueAsNumber;
     $("#customRange2label").text("Histogram Bins: " + $("#customRange2")[0].value);
-    console.log(bins);
     $.ajax({
         url: "getHistogramWindow/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" + map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() + "&southwest_lng=" + map.getBounds()._southWest.lng.toString() + "&number_of_bins=" + bins,
         type: "GET",
