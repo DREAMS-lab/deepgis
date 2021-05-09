@@ -1036,26 +1036,26 @@ def get_histogram_for_window(request):
     ymax = float(request.GET.get("northeast_lat"))
     number_of_bins = int(request.GET.get("number_of_bins"))
 
-    raster = str(request.GET.get("raster"))
-    raster = RasterImage.objects.filter(name=raster)
-
-    if len(raster) == 1 and raster[0].resolution != -1:
-        resolution = raster[0].resolution
-    else:
-        resolution = 1
-
     bbox = (xmin, ymin, xmax, ymax)
     current_bbox = Polygon.from_bbox(bbox)
     result_set = []
     query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox)
+
     for polygon in query_set:
-        result_set.append(GEOSGeometry(polygon.geometry).area)
-    result = np.histogram(np.array(result_set).astype(np.float32), bins=np.arange(number_of_bins), density=True)
+        geometry = polygon.geometry
+        geometry.srid = 4326
+        geometry.transform(26911)
+        area = geometry.area
+        result_set.append(area)
+
+    result = np.histogram(np.array(result_set).astype(np.float32), bins=number_of_bins)
+
     x = []
     y = []
     for i in range(result[0].shape[0]):
-        x.append(float(result[1].item(i)))
-        y.append(float(result[0].item(i)))
+        x.append(round(result[1].item(i), 2))
+        y.append(round(result[0].item(i), 2))
+
     return JsonResponse({"status": "success", "y": y, "x": x}, safe=False)
 
 
