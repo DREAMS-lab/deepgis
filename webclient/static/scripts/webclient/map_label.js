@@ -372,24 +372,18 @@ var histogram_data = {
     labels: [0, 1, 2, 3, 4, 5, 6, 7],
     datasets: [
         {
-            label: "Count per polygon area",
-            fill: false,
-            lineTension: 0.1,
-            backgroundColor: "rgba(75,192,192,0.4)",
-            borderColor: "rgba(75,192,192,1)",
-            borderCapStyle: 'butt',
-            borderDash: [],
-            borderDashOffset: 0.0,
-            borderJoinStyle: 'miter',
-            pointBorderColor: "rgba(75,192,192,1)",
-            pointBackgroundColor: "#fff",
+            label: "Count per rock area",
+            borderColor: "#80b6f4",
+            pointBorderColor: "#80b6f4",
+            pointBackgroundColor: "#80b6f4",
+            pointHoverBackgroundColor: "#80b6f4",
+            pointHoverBorderColor: "#80b6f4",
             pointBorderWidth: 1,
-            pointHoverRadius: 5,
-            pointHoverBackgroundColor: "rgba(75,192,192,1)",
-            pointHoverBorderColor: "rgba(220,220,220,1)",
-            pointHoverBorderWidth: 2,
-            pointRadius: 5,
-            pointHitRadius: 10,
+            pointHoverRadius: 1,
+            pointHoverBorderWidth: 1,
+            pointRadius: 3,
+            fill: true,
+            borderWidth: 1,
             data: [0, 0, 0, 0, 0, 0, 0],
         }
     ]
@@ -398,7 +392,23 @@ var histogram_data = {
 window.globals.histogram_chart = Chart.Line(window.globals.chart, {
 	data: histogram_data,
     options: {
-        showLines: true
+        showLines: true,
+        scales: {
+            xAxes: [{
+                display: true,
+                scaleLabel: {
+                    display: true,
+                    labelString: 'Rock area (sq. m)'
+                }
+            }],
+            yAxes: [{
+                display: true,
+                scaleLabel: {
+                    display: true,
+                    labelString: 'Count'
+                }
+            }]
+        }
     }
 });
 
