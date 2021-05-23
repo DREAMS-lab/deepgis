@@ -27,6 +27,7 @@ from django.db.models import Count, Q
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest, HttpResponseServerError
 from django.template import loader
 from django.views.decorators.cache import never_cache
+from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
 from rasterio.features import shapes as rasterio_shapes
@@ -988,6 +989,46 @@ def add_tiled_label(request):
     return JsonResponse(resp_obj)
 
 
+def add_tiled_label1(request):
+    import csv
+
+    with open('agdss_public_webclient_tiledgislabel.csv') as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        line_count = 0
+        for row in csv_reader:
+            if line_count == 0:
+                print(row)
+                line_count += 1
+                continue
+            else:
+                print(line_count)
+                line_count += 1
+                tiled_label = TiledGISLabel()
+                tiled_label.northeast_Lat = row[1]
+                tiled_label.northeast_Lng = row[2]
+                tiled_label.southwest_Lat = row[3]
+                tiled_label.southwest_Lng = row[4]
+                tiled_label.zoom_level = row[5]
+                _user = User.objects.all()[0]
+                _labeler = Labeler.objects.all()  # ADD
+
+                if len(_labeler) == 0:
+                    labeler = Labeler(user=_user)
+                    labeler.save()
+                    _labeler = Labeler.objects.filter(user=_user)
+                _labeler = _labeler[0]
+
+                tiled_label.labeler = _labeler
+                tiled_label.parent_raster = RasterImage.objects.all()[0]
+                tiled_label.category = CategoryType.objects.get(category_name="rocks")  # ADD
+                tiled_label.label_json = row[6]
+                tiled_label.label_type = row[7]
+                tiled_label.geometry = row[8]
+                tiled_label.save()
+
+    return JsonResponse({"status": "failure", "message": f"{line_count}"}, safe=False)
+
+
 @csrf_exempt
 def get_all_tiled_labels(request):
     user = request.user
@@ -1027,7 +1068,7 @@ def get_all_tiled_labels(request):
     request.session['prev_multipoly'] = str(previous_boxes)
     return JsonResponse(response_obj, safe=False)
 
-
+@cache_page(6000)
 @csrf_exempt
 def get_histogram_for_window(request):
     xmin = float(request.GET.get("southwest_lng"))
@@ -1036,27 +1077,28 @@ def get_histogram_for_window(request):
     ymax = float(request.GET.get("northeast_lat"))
     number_of_bins = int(request.GET.get("number_of_bins"))
 
-    raster = str(request.GET.get("raster"))
-    raster = RasterImage.objects.filter(name=raster)
-
-    if len(raster) == 1 and raster[0].resolution != -1:
-        resolution = raster[0].resolution
-    else:
-        resolution = 1
-
     bbox = (xmin, ymin, xmax, ymax)
     current_bbox = Polygon.from_bbox(bbox)
     result_set = []
     query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox)
+
     for polygon in query_set:
-        result_set.append(GEOSGeometry(polygon.geometry).area)
-    result = np.histogram(np.array(result_set).astype(np.float32), bins=np.arange(number_of_bins), density=True)
+        geometry = polygon.geometry
+        geometry.srid = 4326
+        geometry.transform(26911)
+        area = geometry.area
+        result_set.append(area)
+
+    result = np.histogram(np.array(result_set).astype(np.float32), bins=number_of_bins)
+
     x = []
     y = []
     for i in range(result[0].shape[0]):
-        x.append(float(result[1].item(i)))
-        y.append(float(result[0].item(i)))
+        x.append(round(result[1].item(i), 2))
+        y.append(round(result[0].item(i), 2))
+
     return JsonResponse({"status": "success", "y": y, "x": x}, safe=False)
+
 
 
 def get_window_tiled_labels(request):

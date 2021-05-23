@@ -37,6 +37,7 @@ urlpatterns = [
     url(r'^getAllTiledLabels/', views.get_all_tiled_labels, name='get_all_tiled_labels'),
     path('getHistogramWindow/', views.get_histogram_for_window),
     path('addTiledLabel', views.add_tiled_label),
+    path('addTiledLabel1', views.add_tiled_label1),
     path('TiledLables', views.get_all_tiled_labels),
     path('WindowTiledLables', views.get_window_tiled_labels),
     path('addTiledImage', views.add_train_image_label),

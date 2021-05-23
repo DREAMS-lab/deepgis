@@ -18,6 +18,7 @@
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw-src.css "/>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw-src.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/leaflet-freehandshapes@0.3.7/dist/leaflet-freehandshapes.min.js"></script>
+	<script src="https://unpkg.com/leaflet.vectorgrid@latest/dist/Leaflet.VectorGrid.bundled.js"></script>
 	</head>
 
 <body bgcolor="#c0c0c0">
@@ -38,7 +39,7 @@
 						<button type="button" title="Add a new category for labels" id="category_submit" style="width:40%;" class="btn btn-primary btn-sm"><i class="fa fa-plus"></i>Add category</button>
 					</div>
 				</form>
-					<li data-toggle="collapse" data-target="#tools_coll" class="collapsed active">
+				<li data-toggle="collapse" data-target="#tools_coll" class="collapsed active">
 					<p class="bold"><i class="fa fa-cog" aria-hidden="true"></i> Free Hand tools <span class="arrow"></span></p>
 				</li>
 				<ul class="sidebar-nav2 sub-menu collapse show" id="tools_coll">
@@ -46,6 +47,12 @@
 				</ul>
 				<label for="customRange2" id="customRange2label" class="form-label" style="color: #ffffff">Histogram Bins</label>
 				<input type="range" class="form-range" min="0" max="100" id="customRange2">
+				<li data-toggle="collapse" data-target="#DrawOrHist_col" class="collapsed active">
+					<p class="bold"><i class="fa fa-cog" aria-hidden="true"></i>Toggle Draw/Histogram<span class="arrow"></span></p>
+				</li>
+				<ul class="sidebar-nav2 sub-menu collapse show" id="DrawOrHist_col">
+					<button id="DrawOrHist" title="DrawOrHist" type="button" class="btn btn-success btn-sm"><i class="fa fa-check"></i>Plot histograms</button>
+				</ul>
 			</ul>
 		</div>
 		<div id="page-content-wrapper">
@@ -71,8 +78,8 @@
 				</div>
 			</div>
 			<div id="map" style="height: 800px; width: 800px; float:left"></div> </br>
-			<div id="stats" style="height: 300px; width: 300px; float:left">
-				<canvas id="histogram" width="300" height="300"></canvas>
+			<div id="stats" style="height: 300px; width: 600px;">
+				<canvas id="histogram" width="600" height="300"></canvas>
 			</div>
 			<a href="/webclient/label" class="btn btn-success" style="position: absolute;top: 10px;right: 200px;"><i class="fa fa-sign-out"></i>Label</a>
 			<a href="/logout" class="btn btn-danger logoutBtn"><i class="fa fa-sign-out"></i>Logout </a>

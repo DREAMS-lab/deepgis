@@ -63,6 +63,21 @@ function updateCategoryProperties() {
     });
 }
 
+function change_draw_color () {
+    if ($('#DrawOrHist').hasClass('btn-danger')) {
+        $('#DrawOrHist').removeClass('btn-danger');
+        $('#DrawOrHist').addClass('btn-success');
+        $('#DrawOrHist').html('<i class="fa fa-check"></i> Plot Histograms');
+    } else {
+        $('#DrawOrHist').removeClass('btn-success');
+        $('#DrawOrHist').addClass('btn-danger');
+        $('#DrawOrHist').html('<i class="fa fa-check"></i> Draw objects');
+        $("input:radio[name=category_select]:first").attr('checked', true).trigger('change');
+    }
+};
+
+$('#DrawOrHist').click(change_draw_color);
+
 function showSnackBar(text) {
     var snackBar = document.getElementById("snackbar");
     snackBar.innerHTML = text;
@@ -76,13 +91,26 @@ function showSnackBar(text) {
 
 updateCategoryProperties();
 
+
 var map = L.map('map', {
     minZoom: 1,
-    maxZoom: 28,
+    maxZoom: 22,
     updateWhenZooming:false,
     updateWhenIdle: true,
     preferCanvas: true
 });
+
+mapbox = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+    maxZoom: 22,
+    id: 'mapbox/satellite-streets-v9',
+    tileSize: 512,
+    zoomOffset: -1,
+    accessToken: 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw'
+})
+
+window.globals.layers["mapbox/satellite-streets-v9"] = mapbox;
+mapbox.addTo(map);
 
 map.on('baselayerchange', function (e) {
     window.globals.active_layer = e.name;
@@ -95,31 +123,37 @@ function updateRaster(map) {
         dataType: "json",
         success: function(response) {
             for (i = 0; i < response.message.length; i++) {
-                layer = L.tileLayer(response.message[i].path +'/{z}/{x}/{y}.png', {
+                console.log(response.message[i].path);
+                layer = L.tileLayer(response.message[i].path, {
                     attribution: response.message[i].attribution,
                     minZoom: response.message[i].minZoom,
                     maxZoom: response.message[i].maxZoom,
-                    id: 'mapbox.streets',
-                    noWrap: true,
-                    tms: true
+                    id: response.message[i].name,
+                    noWrap: true
                 });
-                map.setView(response.message[i].lat_lng, 23);
                 window.globals.rasters.push(layer);
                 window.globals.layers[response.message[i].name] = layer;
+                map.setView(response.message[i].lat_lng, 22);
+                window.globals.active_layer = layer;
             }
-            // Add mapbox to know where the image is
-            mapbox = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
-                attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-                maxZoom: 23,
-                id: 'mapbox/satellite-streets-v9',
-                tileSize: 512,
-                zoomOffset: -1,
-                accessToken: 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw'
-            })
-//            window.globals.layers["mapbox/satellite-streets-v9"] = mapbox;
-            mapbox.addTo(map);
 
-            L.control.layers(window.globals.layers, {}).addTo(map);
+            geoJson = L.vectorGrid.protobuf("https://rocks-vector-server.deepgis.org/public.webclient_tiledgislabel/{z}/{x}/{y}.pbf", {
+                maxNativeZoom: 22,
+                vectorTileLayerStyles: {
+                    "public.webclient_tiledgislabel": {
+                        fillOpacity: 0.05,
+                        color: 'red',
+                        weight: 0.5,
+                        stroke: true,
+                        fill: true,
+                    }
+                },
+            }).addTo(map);
+
+            window.globals.rasters.push(geoJson);
+            window.globals.layers["prediction"] = geoJson;
+
+            L.control.layers({}, window.globals.layers).addTo(map);
             window.globals.rasters.forEach(function(layer) {
                 layer.addTo(map);
             });
@@ -147,24 +181,23 @@ var drawControl = new L.Control.Draw({
         polyline: false,
         marker: false,
         circlemarker: false,
-        circle: true
+        circle: false
     }
 });
 
 drawControl.addTo(map);
+var histogram_polygons = 1;
 
 draw_shapes = function(geoJson, label_type) {
     geoJson.properties.options.weight = 0.5;
     if (label_type == "circle" || label_type == "Circle") {
-        circleLayer = L.circle([geoJson.geometry.coordinates[1], geoJson.geometry.coordinates[0]], geoJson.properties.options);
-        drawnItems.addLayer(circleLayer);
+        draw_shapes_layer = L.circle([geoJson.geometry.coordinates[1], geoJson.geometry.coordinates[0]], geoJson.properties.options);
     } else if (label_type.toLowerCase() == "rectangle") {
-        var rectLayer = L.rectangle([
+        var draw_shapes_layer = L.rectangle([
             [geoJson.geometry.coordinates[0][0].slice().reverse(), geoJson.geometry.coordinates[0][1].slice().reverse(),
                 geoJson.geometry.coordinates[0][2].slice().reverse(), geoJson.geometry.coordinates[0][3].slice().reverse()
             ]
         ], geoJson.properties.options);
-        drawnItems.addLayer(rectLayer);
     } else if (label_type.toLowerCase() == "polygon") {
         coords = [];
         for (j = 0; j < geoJson.geometry.coordinates.length; j++) {
@@ -173,12 +206,42 @@ draw_shapes = function(geoJson, label_type) {
                 coords[j].push(geoJson.geometry.coordinates[j][k].slice().reverse());
             }
         }
-        var polyLayer = L.polygon(coords, geoJson.properties.options);
-        drawnItems.addLayer(polyLayer);
+        var draw_shapes_layer = L.polygon(coords, geoJson.properties.options);
     } else {
-        var geoJsonLayer = L.geoJSON(geoJson, geoJson.properties.options);
-        drawnItems.addLayer(geoJsonLayer);
+        draw_shapes_layer = L.geoJSON(geoJson, geoJson.properties.options);
     }
+    if ($('#DrawOrHist').hasClass('btn-success')) {
+        draw_shapes_layer.bindPopup("Histogram #" + histogram_polygons).openPopup();
+        histogram_polygons += 1;
+    }
+    drawnItems.addLayer(draw_shapes_layer);
+
+    if ($('#DrawOrHist').hasClass('btn-success')) {
+        drawnItems.on('click', function(e) {
+            bins = $("#customRange2")[0].valueAsNumber;
+            var bounds = e.layer.getBounds();
+            var ne_lat = bounds._northEast.lat;
+            var ne_lng = bounds._northEast.lng;
+            var sw_lat = bounds._southWest.lat;
+            var sw_lng = bounds._southWest.lng;
+            $.ajax({
+                url: "getHistogramWindow/?northeast_lat=" + ne_lat + "&northeast_lng=" + ne_lng + "&southwest_lat=" + sw_lat + "&southwest_lng=" + sw_lng + "&number_of_bins=" + bins,
+                type: "GET",
+                success: function(data) {
+                    window.globals.histogram_chart.data.labels = data.x;
+                    window.globals.histogram_chart.data.datasets[0].data = data.y;
+                    window.globals.histogram_chart.data.datasets[0].borderColor = "#ff0000";
+                    window.globals.histogram_chart.data.datasets[0].pointBorderColor = "#ff0000";
+                    window.globals.histogram_chart.data.datasets[0].pointBackgroundColor = "#ff0000";
+                    window.globals.histogram_chart.data.datasets[0].pointHoverBackgroundColor = "#ff0000";
+                    window.globals.histogram_chart.data.datasets[0].pointHoverBorderColor = "#ff0000";
+                    window.globals.histogram_chart.data.datasets[0].label = "Count per rock area for " + e.layer._popup._content;
+                    window.globals.histogram_chart.update();
+                }
+            });
+        });
+    }
+    return draw_shapes_layer;
 };
 
 function project(lat, lng, zoom) {
@@ -224,6 +287,7 @@ function freeHand() {
         };
 
         drawer.setMode('add');
+
         drawer.on('layeradd', function(data) {
             drawer.setMode('view');
             var layer = data.layer;
@@ -248,21 +312,69 @@ function freeHand() {
                 geoJSON: geoJson
             };
 
-            $.ajax({
-                url: "/webclient/addTiledLabel",
-                type: "POST",
-                dataType: "text",
-                data: JSON.stringify(requestObj),
-                success: function(data) {
-                    showSnackBar(JSON.parse(data).message);
-                },
-                error: function(data) {
-                    showSnackBar(JSON.parse(data).message);
-                }
-            });
+            if ($('#DrawOrHist').hasClass('btn-success')) {
+                layer.bindPopup("Histogram #" + histogram_polygons).openPopup();
+                histogram_polygons += 1;
+                // Case to display histogram
+                bins = $("#customRange2")[0].valueAsNumber;
+                $.ajax({
+                    url: "getHistogramWindow/?northeast_lat=" + ne_lat + "&northeast_lng=" + ne_lng + "&southwest_lat=" + sw_lat + "&southwest_lng=" + sw_lng + "&number_of_bins=" + bins,
+                    type: "GET",
+                    success: function(data) {
+                        window.globals.histogram_chart.data.labels = data.x;
+                        window.globals.histogram_chart.data.datasets[0].data = data.y;
+                        window.globals.histogram_chart.data.datasets[0].borderColor = "#ff0000";
+                        window.globals.histogram_chart.data.datasets[0].pointBorderColor = "#ff0000";
+                        window.globals.histogram_chart.data.datasets[0].pointBackgroundColor = "#ff0000";
+                        window.globals.histogram_chart.data.datasets[0].pointHoverBackgroundColor = "#ff0000";
+                        window.globals.histogram_chart.data.datasets[0].pointHoverBorderColor = "#ff0000";
+                        window.globals.histogram_chart.data.datasets[0].label = "Count per rock area for Histogram #" + (histogram_polygons - 1);
+                        window.globals.histogram_chart.update();
+                        layer.openPopup();
+                    }
+                });
+            } else {
+                showSnackBar("Adding objects to database is currently disabled.");
+//                $.ajax({
+//                    url: "/webclient/addTiledLabel",
+//                    type: "POST",
+//                    dataType: "text",
+//                    data: JSON.stringify(requestObj),
+//                    success: function(data) {
+//                        showSnackBar(JSON.parse(data).message);
+//                    },
+//                    error: function(data) {
+//                        showSnackBar(JSON.parse(data).message);
+//                    }
+//                });
+            }
             $('#freeHandButton').html('<i class="fa fa-check"></i>Enable Free Hand');
             $('#freeHandButton').removeClass('btn-warning');
             $('#freeHandButton').addClass('btn-success');
+
+            layer.on('click', function(e) {
+                bins = $("#customRange2")[0].valueAsNumber;
+                var bounds = e.sourceTarget._bounds;
+                var ne_lat = bounds._northEast.lat;
+                var ne_lng = bounds._northEast.lng;
+                var sw_lat = bounds._southWest.lat;
+                var sw_lng = bounds._southWest.lng;
+                $.ajax({
+                    url: "getHistogramWindow/?northeast_lat=" + ne_lat + "&northeast_lng=" + ne_lng + "&southwest_lat=" + sw_lat + "&southwest_lng=" + sw_lng + "&number_of_bins=" + bins,
+                    type: "GET",
+                    success: function(data) {
+                        window.globals.histogram_chart.data.labels = data.x;
+                        window.globals.histogram_chart.data.datasets[0].data = data.y;
+                        window.globals.histogram_chart.data.datasets[0].borderColor = "#ff0000";
+                        window.globals.histogram_chart.data.datasets[0].pointBorderColor = "#ff0000";
+                        window.globals.histogram_chart.data.datasets[0].pointBackgroundColor = "#ff0000";
+                        window.globals.histogram_chart.data.datasets[0].pointHoverBackgroundColor = "#ff0000";
+                        window.globals.histogram_chart.data.datasets[0].pointHoverBorderColor = "#ff0000";
+                        window.globals.histogram_chart.data.datasets[0].label = "Count per rock area for " + e.sourceTarget._popup._content;
+                        window.globals.histogram_chart.update();
+                    }
+                });
+            });
         });
         drawnItems.addLayer(drawer);
         window.globals.lastLayer = drawnItems.getLayerId(drawer);
@@ -285,7 +397,6 @@ map.on(L.Draw.Event.CREATED, function(event) {
         showSnackBar("No active raster layer present.");
         return;
     }
-    layer.addTo(map);
     var bounds = layer.getBounds();
     ne_lat = bounds._northEast.lat;
     ne_lng = bounds._northEast.lng;
@@ -303,26 +414,51 @@ map.on(L.Draw.Event.CREATED, function(event) {
         raster: window.globals.active_layer,
         geoJSON: geoJson
     };
-//    draw_shapes(geoJson, event.layerType);
-    $.ajax({
-        url: "/webclient/addTiledLabel",
-        type: "POST",
-        dataType: "text",
-        data: JSON.stringify(requestObj),
-        success: function(data) {
-            showSnackBar(JSON.parse(data).message);
-        },
-        error: function(data) {
-            showSnackBar(JSON.parse(data).message);
-        }
-    });
+    var _layer = draw_shapes(geoJson, event.layerType);
 
+    if ($('#DrawOrHist').hasClass('btn-success')) {
+        // Case to display histogram
+        bins = $("#customRange2")[0].valueAsNumber;
+        $.ajax({
+            url: "getHistogramWindow/?northeast_lat=" + ne_lat + "&northeast_lng=" + ne_lng + "&southwest_lat=" + sw_lat + "&southwest_lng=" + sw_lng + "&number_of_bins=" + bins,
+            type: "GET",
+            success: function(data) {
+                window.globals.histogram_chart.data.labels = data.x;
+                window.globals.histogram_chart.data.datasets[0].data = data.y;
+                window.globals.histogram_chart.data.datasets[0].borderColor = "#ff0000";
+                window.globals.histogram_chart.data.datasets[0].pointBorderColor = "#ff0000";
+                window.globals.histogram_chart.data.datasets[0].pointBackgroundColor = "#ff0000";
+                window.globals.histogram_chart.data.datasets[0].pointHoverBackgroundColor = "#ff0000";
+                window.globals.histogram_chart.data.datasets[0].pointHoverBorderColor = "#ff0000";
+                window.globals.histogram_chart.data.datasets[0].label = "Count per rock area for Histogram #" + (histogram_polygons - 1);
+                window.globals.histogram_chart.update();
+                _layer.openPopup();
+            }
+        });
+    } else {
+        showSnackBar("Adding objects to database is currently disabled.");
+        // Case to draw objects
+        // $.ajax({
+        //     url: "/webclient/addTiledLabel",
+        //     type: "POST",
+        //     dataType: "text",
+        //     data: JSON.stringify(requestObj),
+        //     success: function(data) {
+        //         showSnackBar(JSON.parse(data).message);
+        //     },
+        //     error: function(data) {
+        //         showSnackBar(JSON.parse(data).message);
+        //     }
+        // });
+    }
 });
 
 map.on('draw:deleted', function(e) {
     var request_obj = [];
     var json = e.layers.toGeoJSON(20);
+
     e.layers.eachLayer(function(layer) {
+        drawnItems.removeLayer(layer);
         if (layer instanceof L.Rectangle) {
             var label_type = "rectangle";
         } else if (layer instanceof L.Circle) {
@@ -334,11 +470,11 @@ map.on('draw:deleted', function(e) {
         } else {
             return; //Not one of the possible label types
         }
+
         var bounds = layer.getBounds();
         var jsonMessage = JSON.stringify(layer.toGeoJSON(20));
         var northeast = bounds.getNorthEast();
         var southwest = bounds.getSouthWest();
-
         delete_layer_dict = {
             northeast_lat: northeast.lat,
             northeast_lng: northeast.lng,
@@ -348,72 +484,76 @@ map.on('draw:deleted', function(e) {
             geoJSON: jsonMessage,
             category_name: window.globals.categoryColor[hexToRgb(layer.options.color)]
         };
+
         request_obj.push(delete_layer_dict);
+
         if (layer._map != null) {
             layer._map.removeLayer(layer);
         }
+
     });
-    $.ajax({
-        url: "/webclient/deleteTileLabels",
-        type: "POST",
-        dataType: "text",
-        data: JSON.stringify(request_obj),
-        success: function(data) {
-            showSnackBar(JSON.parse(data).message);
-        },
-        error: function(data) {
-            showSnackBar(JSON.parse(data).message);
-        }
-    });
+
+    // $.ajax({
+    //     url: "/webclient/deleteTileLabels",
+    //     type: "POST",
+    //     dataType: "text",
+    //     data: JSON.stringify(request_obj),
+    //     success: function(data) {
+    //         showSnackBar(JSON.parse(data).message);
+    //     },
+    //     error: function(data) {
+    //         showSnackBar(JSON.parse(data).message);
+    //     }
+    // });
 });
 
 window.globals.chart = $("#histogram").get(0).getContext("2d");
+
 var histogram_data = {
     labels: [0, 1, 2, 3, 4, 5, 6, 7],
     datasets: [
         {
-            label: "Count per polygon area",
-            fill: false,
-            lineTension: 0.1,
-            backgroundColor: "rgba(75,192,192,0.4)",
-            borderColor: "rgba(75,192,192,1)",
-            borderCapStyle: 'butt',
-            borderDash: [],
-            borderDashOffset: 0.0,
-            borderJoinStyle: 'miter',
-            pointBorderColor: "rgba(75,192,192,1)",
-            pointBackgroundColor: "#fff",
+            label: "Count per rock area in the current view window",
+            borderColor: "#ff0000",
+            pointBorderColor: "#ff0000",
+            pointBackgroundColor: "#ff0000",
+            pointHoverBackgroundColor: "#ff0000",
+            pointHoverBorderColor: "#ff0000",
             pointBorderWidth: 1,
-            pointHoverRadius: 5,
-            pointHoverBackgroundColor: "rgba(75,192,192,1)",
-            pointHoverBorderColor: "rgba(220,220,220,1)",
-            pointHoverBorderWidth: 2,
-            pointRadius: 5,
-            pointHitRadius: 10,
+            pointHoverRadius: 1,
+            pointHoverBorderWidth: 1,
+            pointRadius: 3,
+            fill: true,
+            borderWidth: 1,
             data: [0, 0, 0, 0, 0, 0, 0],
         }
     ]
 };
 
-window.globals.histogram_chart = Chart.Line(window.globals.chart, {
+window.globals.histogram_chart = Chart.Bar(window.globals.chart, {
 	data: histogram_data,
     options: {
-        showLines: true
+        showLines: true,
+        scales: {
+            xAxes: [{
+                display: true,
+                scaleLabel: {
+                    display: true,
+                    labelString: 'Rock area (sq. m)'
+                }
+            }],
+            yAxes: [{
+                display: true,
+                scaleLabel: {
+                    display: true,
+                    labelString: 'Count'
+                }
+            }]
+        }
     }
 });
 
 map.on('moveend', function(e) {
-    $.getJSON({
-        url: "getAllTiledLabels/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" + map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() + "&southwest_lng=" + map.getBounds()._southWest.lng.toString(),
-        type: "GET",
-        success: function(data) {
-            geoData = data;
-            for(j = 0; j < drawnItems.getLayers().length; j++) {}
-                for(i = 0; i < geoData.length; i++) {
-                    draw_shapes(geoData[i].geoJSON, geoData[i].label_type)
-                }
-            }
-    });
     bins = $("#customRange2")[0].valueAsNumber;
     $.ajax({
         url: "getHistogramWindow/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" + map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() + "&southwest_lng=" + map.getBounds()._southWest.lng.toString() + "&number_of_bins=" + bins,
@@ -421,9 +561,16 @@ map.on('moveend', function(e) {
         success: function(data) {
             window.globals.histogram_chart.data.labels = data.x;
             window.globals.histogram_chart.data.datasets[0].data = data.y;
+            window.globals.histogram_chart.data.datasets[0].borderColor = "#ff0000";
+            window.globals.histogram_chart.data.datasets[0].pointBorderColor = "#ff0000";
+            window.globals.histogram_chart.data.datasets[0].pointBackgroundColor = "#ff0000";
+            window.globals.histogram_chart.data.datasets[0].pointHoverBackgroundColor = "#ff0000";
+            window.globals.histogram_chart.data.datasets[0].pointHoverBorderColor = "#ff0000";
+            window.globals.histogram_chart.data.datasets[0].label = "Count per rock area in the current view window";
             window.globals.histogram_chart.update();
         }
     });
+
 });
 
 $("#customRange2").on( "click", function() {
@@ -435,6 +582,12 @@ $("#customRange2").on( "click", function() {
         success: function(data) {
             window.globals.histogram_chart.data.labels = data.x;
             window.globals.histogram_chart.data.datasets[0].data = data.y;
+            window.globals.histogram_chart.data.datasets[0].borderColor = "#ff0000";
+            window.globals.histogram_chart.data.datasets[0].pointBorderColor = "#ff0000";
+            window.globals.histogram_chart.data.datasets[0].pointBackgroundColor = "#ff0000";
+            window.globals.histogram_chart.data.datasets[0].pointHoverBackgroundColor = "#ff0000";
+            window.globals.histogram_chart.data.datasets[0].pointHoverBorderColor = "#ff0000";
+            window.globals.histogram_chart.data.datasets[0].label = "Count per rock area in the current view window";
             window.globals.histogram_chart.update();
         }
     });
@@ -487,3 +640,6 @@ function rgbToHex(i) {
     var result = i.match(regex);
     return "#" + componentToHex(result[0]) + componentToHex(result[1]) + componentToHex(result[2]);
 }
+
+change_draw_color();
+change_draw_color();
