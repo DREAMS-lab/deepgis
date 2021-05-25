@@ -1068,6 +1068,7 @@ def get_all_tiled_labels(request):
     request.session['prev_multipoly'] = str(previous_boxes)
     return JsonResponse(response_obj, safe=False)
 
+
 @cache_page(6000)
 @csrf_exempt
 def get_histogram_for_window(request):
@@ -1089,7 +1090,7 @@ def get_histogram_for_window(request):
         area = geometry.area
         result_set.append(area)
 
-    result = np.histogram(np.array(result_set).astype(np.float32), bins=number_of_bins)
+    result = np.histogram(np.array(result_set).astype(np.float32), bins=np.linspace(0, 2, num=number_of_bins))
 
     x = []
     y = []
@@ -1097,8 +1098,9 @@ def get_histogram_for_window(request):
         x.append(round(result[1].item(i), 2))
         y.append(round(result[0].item(i), 2))
 
-    return JsonResponse({"status": "success", "y": y, "x": x}, safe=False)
-
+    unique = str(xmin) + str(xmax) + str(ymin) + str(ymax)
+    print(unique)
+    return JsonResponse({"status": "success", "y": y, "x": x, "unique": unique}, safe=False)
 
 
 def get_window_tiled_labels(request):

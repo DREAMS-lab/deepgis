@@ -2,92 +2,105 @@
 <html>
 
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-	<title>DeepGIS</title>
-	<link rel="stylesheet" href="/static/css/style.css">
-	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
-	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-	<link href="/static/css/simple-sidebar.css" rel="stylesheet">
-	<link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
-	<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-mousewheel/3.1.13/jquery.mousewheel.min.js"></script>
-	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
-	<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw-src.css "/>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw-src.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/leaflet-freehandshapes@0.3.7/dist/leaflet-freehandshapes.min.js"></script>
-	<script src="https://unpkg.com/leaflet.vectorgrid@latest/dist/Leaflet.VectorGrid.bundled.js"></script>
-	</head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>DeepGIS</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link href="/static/css/simple-sidebar.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-mousewheel/3.1.13/jquery.mousewheel.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw-src.css "/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw-src.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-freehandshapes@0.3.7/dist/leaflet-freehandshapes.min.js"></script>
+    <script src="https://unpkg.com/leaflet.vectorgrid@latest/dist/Leaflet.VectorGrid.bundled.js"></script>
+</head>
 
 <body bgcolor="#c0c0c0">
-	<div id="wrapper" class="toggled">
-		<div id="sidebar-wrapper">
-			<ul class="sidebar-nav">
-				<li class="sidebar-brand">
-					<a href="#" style="font-size: 150%; text-align: center;">DeepGIS</a>
-				</li>
-				<li data-toggle="collapse" data-target="#categories" class="collapsed active">
-					<p class="bold"><i class="fa fa-list-ul" aria-hidden="true"></i> Categories <span class="arrow"></span></p>
-				</li>
-				<form action="" class="sub-menu collapse show" id="categories">
-					<ul class="sidebar-nav2 sub-menu collapse show" id="categories_coll">
-					</ul>
-					<div style="margin-top: 5px; display: inline-grid; grid-template-rows: 50% 50%; width: 100%; justify-items:center;">
-						<input class="form-control form-control-sm " style="width: 85%;margin-bottom: 10px;" id="add_new_category" placeholder="Add a new category">
-						<button type="button" title="Add a new category for labels" id="category_submit" style="width:40%;" class="btn btn-primary btn-sm"><i class="fa fa-plus"></i>Add category</button>
-					</div>
-				</form>
-				<li data-toggle="collapse" data-target="#tools_coll" class="collapsed active">
-					<p class="bold"><i class="fa fa-cog" aria-hidden="true"></i> Free Hand tools <span class="arrow"></span></p>
-				</li>
-				<ul class="sidebar-nav2 sub-menu collapse show" id="tools_coll">
-					<button id="freeHandButton" title="Freehand" type="button" class="btn btn-success btn-sm"><i class="fa fa-check"></i>Enable Free Hand</button>
-				</ul>
-				<label for="customRange2" id="customRange2label" class="form-label" style="color: #ffffff">Histogram Bins</label>
-				<input type="range" class="form-range" min="0" max="100" id="customRange2">
-				<li data-toggle="collapse" data-target="#DrawOrHist_col" class="collapsed active">
-					<p class="bold"><i class="fa fa-cog" aria-hidden="true"></i>Toggle Draw/Histogram<span class="arrow"></span></p>
-				</li>
-				<ul class="sidebar-nav2 sub-menu collapse show" id="DrawOrHist_col">
-					<button id="DrawOrHist" title="DrawOrHist" type="button" class="btn btn-success btn-sm"><i class="fa fa-check"></i>Plot histograms</button>
-				</ul>
-			</ul>
-		</div>
-		<div id="page-content-wrapper">
-			<div id="controls">
-				<div id="tips">
-					<p>
-						<h3>Instructions</h3>
-						<ul class="list-group">
-							<li class="list-group-item"> Use your best guess to annotate interesting features!
-								<br/>
-							<img src="https://github.com/Leaflet/Leaflet.draw/raw/develop/dist/images/spritesheet.png">
-								<br/>
-							Use polygon, rectangle from leaflet tool bar to annotate.
-								<br/>
-							Use free hand to annotate faster. Free hand disables after creating an annotation.
-								<br/>
-							When using free hand, select category first and then click the button "Enable Free Hand".
-								<br/>
-							To delete, click <i class="fa fa-trash-o" aria-hidden="true"></i>icon, double click an already annotated area and click save button.
-								<br/>
-						</ul>
-					<p>
-				</div>
-			</div>
-			<div id="map" style="height: 800px; width: 800px; float:left"></div> </br>
-			<div id="stats" style="height: 300px; width: 600px;">
-				<canvas id="histogram" width="600" height="300"></canvas>
-			</div>
-			<a href="/webclient/label" class="btn btn-success" style="position: absolute;top: 10px;right: 200px;"><i class="fa fa-sign-out"></i>Label</a>
-			<a href="/logout" class="btn btn-danger logoutBtn"><i class="fa fa-sign-out"></i>Logout </a>
-		    <div id="snackbar"></div>
+<div id="wrapper" class="toggled">
+    <div id="sidebar-wrapper">
+        <ul class="sidebar-nav">
+            <li class="sidebar-brand">
+                <a href="#" style="font-size: 150%; text-align: center;">DeepGIS</a>
+            </li>
+            <li data-toggle="collapse" data-target="#categories" class="collapsed active">
+                <p class="bold"><i class="fa fa-list-ul" aria-hidden="true"></i> Categories <span class="arrow"></span></p>
+            </li>
+            <form action="" class="sub-menu collapse show" id="categories">
+                <ul class="sidebar-nav2 sub-menu collapse show" id="categories_coll">
+                </ul>
+                <div style="margin-top: 5px; display: inline-grid; grid-template-rows: 50% 50%; width: 100%; justify-items:center;">
+                    <input class="form-control form-control-sm " style="width: 85%;margin-bottom: 10px;" id="add_new_category" placeholder="Add a new category">
+                    <button type="button" title="Add a new category for labels" id="category_submit" style="width:40%;" class="btn btn-primary btn-sm"><i class="fa fa-plus"></i>Add category</button>
+                </div>
+            </form>
+            <li data-toggle="collapse" data-target="#tools_coll" class="collapsed active">
+                <p class="bold"><i class="fa fa-cog" aria-hidden="true"></i> Free Hand tools <span class="arrow"></span></p>
+            </li>
+            <ul class="sidebar-nav2 sub-menu collapse show" id="tools_coll">
+                <button id="freeHandButton" title="Freehand" type="button" class="btn btn-success btn-sm"><i class="fa fa-check"></i>Enable Free Hand</button>
+            </ul>
+            <label for="customRange2" id="customRange2label" class="form-label" style="color: #ffffff">Histogram Bins</label>
+            <input type="range" class="form-range" min="0" max="100" id="customRange2">
+            <li data-toggle="collapse" data-target="#DrawOrHist_col" class="collapsed active">
+                <p class="bold"><i class="fa fa-cog" aria-hidden="true"></i>Toggle Draw/Histogram<span class="arrow"></span></p>
+            </li>
+            <ul class="sidebar-nav2 sub-menu collapse show" id="DrawOrHist_col">
+                <button id="DrawOrHist" title="DrawOrHist" type="button" class="btn btn-success btn-sm"><i class="fa fa-check"></i>Plot histograms</button>
+            </ul>
+            <ul class="sidebar-nav2 sub-menu collapse show" id="ShowAllHist1">
+                <button id="ShowAllHist" title="DrawOrHist" type="button" class="btn btn-outline-primary btn-sm"><i class="fa fa-check"></i>Show all histograms</button>
+            </ul>
+        </ul>
+    </div>
+    <div id="page-content-wrapper">
+        <div id="controls">
+            <div id="tips">
+                <p>
+                <h3>Instructions</h3>
+                <ul class="list-group">
+                    <li class="list-group-item"> Use your best guess to annotate interesting features!
+                        <br/>
+                        <img src="https://github.com/Leaflet/Leaflet.draw/raw/develop/dist/images/spritesheet.png">
+                        <br/>
+                        Use polygon, rectangle from leaflet tool bar to annotate.
+                        <br/>
+                        Use free hand to annotate faster. Free hand disables after creating an annotation.
+                        <br/>
+                        When using free hand, select category first and then click the button "Enable Free Hand".
+                        <br/>
+                        To delete, click <i class="fa fa-trash-o" aria-hidden="true"></i>icon, double click an already annotated area and click save button.
+                        <br/>
+                </ul>
+                <p>
+            </div>
         </div>
-	</div>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.js"></script>
-	<script src="/static/scripts/webclient/map_label.js"></script>
+        <div id="map" style="height: 800px; width: 800px; float:left"></div> </br>
+        <div id="stats" style="height: 300px; width: 600px;">
+            <canvas id="histogram" width="600" height="300"></canvas>
+        </div>
+        <a href="/webclient/label" class="btn btn-success" style="position: absolute;top: 10px;right: 200px;"><i class="fa fa-sign-out"></i>Label</a>
+        <a href="/logout" class="btn btn-danger logoutBtn"><i class="fa fa-sign-out"></i>Logout </a>
+        <div id="snackbar"></div>
+        <div class="modal fade" id="imagemodal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+            <div class="modal-dialog" style="max-width: 600px;">
+                <div class="modal-content">
+                    <div class="modal-header">Histograms</div>
+                    <div class="modal-body" id="modal_body">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.js"></script>
+<script src="/static/scripts/webclient/map_label.js"></script>
 </body>
 
 </html>

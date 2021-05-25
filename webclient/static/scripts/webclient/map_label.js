@@ -78,6 +78,80 @@ function change_draw_color () {
 
 $('#DrawOrHist').click(change_draw_color);
 
+$('#imagemodal').on('hide.bs.modal', function (e) {
+    $('#modal_body').html("");
+});
+
+$('#ShowAllHist').click(function () {
+    var histogram_count = 1;
+    var all_active_layers = drawnItems.getLayers();
+    var histograms = {};
+    for ( layer in all_active_layers) {
+        $('#modal_body').append('<canvas id="histogram' + String(layer) + '" width="600" height="300"></canvas>');
+        var chart = $("#histogram" + String(layer)).get(0).getContext("2d");
+
+        var histogram_data = {
+            labels: [0, 1, 2, 3, 4, 5, 6, 7],
+            datasets: [
+                {
+                    label: "Count per rock area for " + all_active_layers[layer]._popup._content,
+                    borderColor: "#ff0000",
+                    pointBorderColor: "#ff0000",
+                    pointBackgroundColor: "#ff0000",
+                    pointHoverBackgroundColor: "#ff0000",
+                    pointHoverBorderColor: "#ff0000",
+                    pointBorderWidth: 1,
+                    pointHoverRadius: 1,
+                    pointHoverBorderWidth: 1,
+                    pointRadius: 3,
+                    fill: true,
+                    borderWidth: 1,
+                    data: [0, 0, 0, 0, 0, 0, 0],
+                }
+            ]
+        };
+        var histogram_chart = Chart.Bar(chart, {
+            data: histogram_data,
+            options: {
+                showLines: true,
+                scales: {
+                    xAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Rock area (sq. m)'
+                        }
+                    }],
+                    yAxes: [{
+                        display: true,
+                        scaleLabel: {
+                            display: true,
+                            labelString: 'Count'
+                        }
+                    }]
+                }
+            }
+        });
+        bins = $("#customRange2")[0].valueAsNumber;
+        var bounds = all_active_layers[layer].getBounds();
+        var ne_lat = bounds._northEast.lat;
+        var ne_lng = bounds._northEast.lng;
+        var sw_lat = bounds._southWest.lat;
+        var sw_lng = bounds._southWest.lng;
+        histograms[String(sw_lng) + String(ne_lng) + String(sw_lat) + String(ne_lat)] = histogram_chart;
+        $.ajax({
+            url: "getHistogramWindow/?northeast_lat=" + ne_lat + "&northeast_lng=" + ne_lng + "&southwest_lat=" + sw_lat + "&southwest_lng=" + sw_lng + "&number_of_bins=" + bins,
+            type: "GET",
+            success: function(data) {
+                histograms[data.unique].data.labels = data.x;
+                histograms[data.unique].data.datasets[0].data = data.y;
+                histograms[data.unique].update();
+            }
+        });
+        $('#imagemodal').modal('show');
+    }
+});
+
 function showSnackBar(text) {
     var snackBar = document.getElementById("snackbar");
     snackBar.innerHTML = text;
