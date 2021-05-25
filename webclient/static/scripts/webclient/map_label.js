@@ -90,11 +90,16 @@ $('#ShowAllHist').click(function () {
         $('#modal_body').append('<canvas id="histogram' + String(layer) + '" width="600" height="300"></canvas>');
         var chart = $("#histogram" + String(layer)).get(0).getContext("2d");
 
+        current_layer = all_active_layers[layer];
+        if (current_layer._layers !== 'undefined') {
+            current_layer = all_active_layers[layer].getLayers()[0];
+        }
+
         var histogram_data = {
             labels: [0, 1, 2, 3, 4, 5, 6, 7],
             datasets: [
                 {
-                    label: "Count per rock area for " + all_active_layers[layer]._popup._content,
+                    label: "Count per rock area for " + current_layer._popup._content,
                     borderColor: "#ff0000",
                     pointBorderColor: "#ff0000",
                     pointBackgroundColor: "#ff0000",
@@ -133,7 +138,7 @@ $('#ShowAllHist').click(function () {
             }
         });
         bins = $("#customRange2")[0].valueAsNumber;
-        var bounds = all_active_layers[layer].getBounds();
+        var bounds = current_layer.getBounds();
         var ne_lat = bounds._northEast.lat;
         var ne_lng = bounds._northEast.lng;
         var sw_lat = bounds._southWest.lat;
