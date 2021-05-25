@@ -91,7 +91,7 @@ $('#ShowAllHist').click(function () {
         var chart = $("#histogram" + String(layer)).get(0).getContext("2d");
 
         current_layer = all_active_layers[layer];
-        if (current_layer._layers !== 'undefined') {
+        if (current_layer._layers) {
             current_layer = all_active_layers[layer].getLayers()[0];
         }
 
