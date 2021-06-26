@@ -10,6 +10,9 @@ DeepGIS is developed using the following technologies
 - [PostgreSQL](https://www.postgresql.org/)
 
 ## Installation
+
+- Edit the `docker-compose.yml` port forwarding to valid ports on your machine.
+
 ```console 
 foo@bar:~$ git clone https://github.com/DREAMS-lab/deepgis.git
 foo@bar:~$ cd deepgis
@@ -29,6 +32,10 @@ If you have a .tif file, you can use the following command to split the tif into
 ```bash 
 foo@bar:~$ python manage.py runscript split_tif cropped_image.tif webclient/static/dataset/ 100
 ```
+
+If you are using a map_label app, then add a tiled raster image as the data source. You can add that in the django admin page.
+
+
 
 We have provided a few test images in `webclient/static/small-tomatoes` directory.
 
