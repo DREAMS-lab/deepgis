@@ -970,7 +970,12 @@ def add_tiled_label(request):
     tiled_label.southwest_Lng = request_json["southwest_lng"]
     tiled_label.zoom_level = request_json["zoom_level"]
     _user = User.objects.filter(username=user)[0]
-    _labeler = Labeler.objects.filter(user=_user)[0]
+    _labeler = Labeler.objects.filter(user=_user)
+    if len(_labeler) == 0:
+        labeler = Labeler(user=_user)
+        labeler.save()
+        _labeler = Labeler.objects.filter(user=_user)
+    _labeler = _labeler[0]
     tiled_label.labeler = _labeler
     raster = RasterImage.objects.filter(name=request_json["raster"])
     if len(raster) == 0 or len(raster) > 1:
@@ -1090,7 +1095,10 @@ def get_histogram_for_window(request):
         area = geometry.area
         result_set.append(area)
 
-    result = np.histogram(np.array(result_set).astype(np.float32), bins=np.linspace(0, 2, num=number_of_bins))
+    # Update the 50 value to whatever range the histogram x-axis should be plotted. 
+    # It's set to 2m in rocks deepgis, but it can be adjusted. 
+    # TODO: take this as user input
+    result = np.histogram(np.array(result_set).astype(np.float32), bins=np.linspace(0, 50, num=number_of_bins))
 
     x = []
     y = []
