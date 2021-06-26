@@ -1,9 +1,12 @@
+// DO python manage.py collectstatic AFTER MAKING CHANGES, SINCE IT'S A STATIC FILE
+
 window.globals = {};
 window.globals.rasters = [];
 window.globals.layers = {};
 window.globals.active_layer = "";
 
 function updateCategoryProperties() {
+    // Category Properties include color and name of the category
     $.ajax({
         url: "/webclient/getCategoryInfo",
         type: "GET",
@@ -22,7 +25,7 @@ function updateCategoryProperties() {
                 window.globals.categoryColor[response[category]['color']] = category;
             }
             $('#categories_coll').html(output.join(''));
-
+            // set color of the FreeHand and Leaflet draw options to the color of the category selected
             set_label_draw_color = function() {
                 if ($('#freeHandButton').hasClass('btn-warning')) {
                     freeHand();
@@ -63,7 +66,11 @@ function updateCategoryProperties() {
     });
 }
 
+// There are two modes of workflow: plot histograms and draw objects.
+// Decision on which mode is currently active is made based on which 
+// btn-* CSS class is active on the toggle button.
 function change_draw_color () {
+    // Switch between Plot Histograms and Draw objects
     if ($('#DrawOrHist').hasClass('btn-danger')) {
         $('#DrawOrHist').removeClass('btn-danger');
         $('#DrawOrHist').addClass('btn-success');
@@ -76,25 +83,28 @@ function change_draw_color () {
     }
 };
 
+// Toggle mode on click
 $('#DrawOrHist').click(change_draw_color);
 
 $('#imagemodal').on('hide.bs.modal', function (e) {
     $('#modal_body').html("");
 });
 
+// Display all the drawn histograms in a single pop-up (modal) window for comparison. 
 $('#ShowAllHist').click(function () {
     var histogram_count = 1;
     var all_active_layers = drawnItems.getLayers();
     var histograms = {};
     for ( layer in all_active_layers) {
-        $('#modal_body').append('<canvas id="histogram' + String(layer) + '" width="600" height="300"></canvas>');
-        var chart = $("#histogram" + String(layer)).get(0).getContext("2d");
-
         current_layer = all_active_layers[layer];
-        if (current_layer._layers) {
+        // HACK: if current_layer has _layer, it's a collection of layers; get the 0th layer then.
+        if (current_layer._layers) { 
             current_layer = all_active_layers[layer].getLayers()[0];
         }
-
+        if (current_layer._popup === undefined) {
+            continue;
+        }
+        // Base histogram data, will be updated later
         var histogram_data = {
             labels: [0, 1, 2, 3, 4, 5, 6, 7],
             datasets: [
@@ -115,6 +125,10 @@ $('#ShowAllHist').click(function () {
                 }
             ]
         };
+
+        $('#modal_body').append('<canvas id="histogram' + String(layer) + '" width="600" height="300"></canvas>');
+        var chart = $("#histogram" + String(layer)).get(0).getContext("2d");
+
         var histogram_chart = Chart.Bar(chart, {
             data: histogram_data,
             options: {
@@ -148,6 +162,7 @@ $('#ShowAllHist').click(function () {
             url: "getHistogramWindow/?northeast_lat=" + ne_lat + "&northeast_lng=" + ne_lng + "&southwest_lat=" + sw_lat + "&southwest_lng=" + sw_lng + "&number_of_bins=" + bins,
             type: "GET",
             success: function(data) {
+                console.log(data);
                 histograms[data.unique].data.labels = data.x;
                 histograms[data.unique].data.datasets[0].data = data.y;
                 histograms[data.unique].update();
@@ -170,7 +185,6 @@ function showSnackBar(text) {
 
 updateCategoryProperties();
 
-
 var map = L.map('map', {
     minZoom: 1,
     maxZoom: 22,
@@ -179,6 +193,7 @@ var map = L.map('map', {
     preferCanvas: true
 });
 
+// Base map layer is a Mapbox API layer for visualization of the location
 mapbox = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
     attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
     maxZoom: 22,
@@ -187,7 +202,6 @@ mapbox = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?ac
     zoomOffset: -1,
     accessToken: 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw'
 })
-
 window.globals.layers["mapbox/satellite-streets-v9"] = mapbox;
 mapbox.addTo(map);
 
@@ -195,6 +209,7 @@ map.on('baselayerchange', function (e) {
     window.globals.active_layer = e.name;
 });
 
+// Display all raster objects in the database from their corresponding path to tile PNGs.
 function updateRaster(map) {
     $.ajax({
         url: "/webclient/getRasterInfo",
@@ -215,7 +230,7 @@ function updateRaster(map) {
                 map.setView(response.message[i].lat_lng, 22);
                 window.globals.active_layer = layer;
             }
-
+/* 
             geoJson = L.vectorGrid.protobuf("https://rocks-vector-server.deepgis.org/public.webclient_tiledgislabel/{z}/{x}/{y}.pbf", {
                 maxNativeZoom: 22,
                 vectorTileLayerStyles: {
@@ -231,7 +246,7 @@ function updateRaster(map) {
 
             window.globals.rasters.push(geoJson);
             window.globals.layers["prediction"] = geoJson;
-
+*/
             L.control.layers({}, window.globals.layers).addTo(map);
             window.globals.rasters.forEach(function(layer) {
                 layer.addTo(map);
@@ -244,7 +259,7 @@ function updateRaster(map) {
 }
 
 updateRaster(map);
-
+// drawnItems will contain all the drawn features on the map.
 var drawnItems = L.featureGroup().addTo(map);
 
 var drawControl = new L.Control.Draw({
@@ -289,12 +304,14 @@ draw_shapes = function(geoJson, label_type) {
     } else {
         draw_shapes_layer = L.geoJSON(geoJson, geoJson.properties.options);
     }
+    // Attach a unique ID to this layer if the mode is in Plot Histogram.
     if ($('#DrawOrHist').hasClass('btn-success')) {
         draw_shapes_layer.bindPopup("Histogram #" + histogram_polygons).openPopup();
         histogram_polygons += 1;
     }
     drawnItems.addLayer(draw_shapes_layer);
-
+   
+    // Plot histogram at the bottom of the page for the selected drawn item.
     if ($('#DrawOrHist').hasClass('btn-success')) {
         drawnItems.on('click', function(e) {
             bins = $("#customRange2")[0].valueAsNumber;
@@ -342,12 +359,17 @@ function freeHand() {
         $('#freeHandButton').html('<i class="fa fa-exclamation-triangle"</i>  Disable Free Hand');
         $('#freeHandButton').removeClass('btn-success');
         $('#freeHandButton').addClass('btn-warning');
+        
+        if($("input:radio[name=category_select]:checked").val() === undefined) {
+            showSnackBar("Missing selection of category");
+            return;
+        }
 
         var color = rgbToHex($("input:radio[name=category_select]:checked").attr('data-color'));
         var drawer = new L.FreeHandShapes();
         drawer.options = {
             polygon: {
-                smoothFactor: 0.000000000001,
+                smoothFactor: 0.000000000001, // precision for lat and lon
                 fillOpacity : 0.25,
                 noClip : false,
                 color: color,
@@ -360,7 +382,7 @@ function freeHand() {
                 clickable : false,
                 weight: 1
             },
-            simplify_tolerance: 0.000000000001,
+            simplify_tolerance: 0.000000000001, // precision for lat and lon
             merge_polygons: false,
             concave_polygons: true
         };
@@ -386,15 +408,15 @@ function freeHand() {
                 southwest_lng: sw_lng,
                 zoom_level: map.getZoom(),
                 label_type: label_type,
-                raster: window.globals.active_layer,
+                raster: window.globals.active_layer.options.id, // name of the raster image
                 category_name: radio_label_class,
                 geoJSON: geoJson
             };
-
+            
             if ($('#DrawOrHist').hasClass('btn-success')) {
                 layer.bindPopup("Histogram #" + histogram_polygons).openPopup();
                 histogram_polygons += 1;
-                // Case to display histogram
+                // Display histogram
                 bins = $("#customRange2")[0].valueAsNumber;
                 $.ajax({
                     url: "getHistogramWindow/?northeast_lat=" + ne_lat + "&northeast_lng=" + ne_lng + "&southwest_lat=" + sw_lat + "&southwest_lng=" + sw_lng + "&number_of_bins=" + bins,
@@ -412,52 +434,53 @@ function freeHand() {
                         layer.openPopup();
                     }
                 });
+                layer.on('click', function(e) {
+                    bins = $("#customRange2")[0].valueAsNumber;
+                    var bounds = e.sourceTarget._bounds;
+                    var ne_lat = bounds._northEast.lat;
+                    var ne_lng = bounds._northEast.lng;
+                    var sw_lat = bounds._southWest.lat;
+                    var sw_lng = bounds._southWest.lng;
+                    $.ajax({
+                        url: "getHistogramWindow/?northeast_lat=" + ne_lat + "&northeast_lng=" + ne_lng + "&southwest_lat=" + sw_lat + "&southwest_lng=" + sw_lng + "&number_of_bins=" + bins,
+                        type: "GET",
+                        success: function(data) {
+                            window.globals.histogram_chart.data.labels = data.x;
+                            window.globals.histogram_chart.data.datasets[0].data = data.y;
+                            window.globals.histogram_chart.data.datasets[0].borderColor = "#ff0000";
+                            window.globals.histogram_chart.data.datasets[0].pointBorderColor = "#ff0000";
+                            window.globals.histogram_chart.data.datasets[0].pointBackgroundColor = "#ff0000";
+                            window.globals.histogram_chart.data.datasets[0].pointHoverBackgroundColor = "#ff0000";
+                            window.globals.histogram_chart.data.datasets[0].pointHoverBorderColor = "#ff0000";
+                            window.globals.histogram_chart.data.datasets[0].label = "Count per rock area for " + e.sourceTarget._popup._content;
+                            window.globals.histogram_chart.update();
+                        }
+                    });
+                });
             } else {
-                showSnackBar("Adding objects to database is currently disabled.");
-//                $.ajax({
-//                    url: "/webclient/addTiledLabel",
-//                    type: "POST",
-//                    dataType: "text",
-//                    data: JSON.stringify(requestObj),
-//                    success: function(data) {
-//                        showSnackBar(JSON.parse(data).message);
-//                    },
-//                    error: function(data) {
-//                        showSnackBar(JSON.parse(data).message);
-//                    }
-//                });
+                // Add the annotation as TiledGISLabel
+                $.ajax({
+                    url: "/webclient/addTiledLabel",
+                    type: "POST",
+                    dataType: "text",
+                    data: JSON.stringify(requestObj),
+                    success: function(data) {
+                        showSnackBar(JSON.parse(data).message);
+                    },
+                    error: function(data) {
+                        showSnackBar(JSON.parse(data).message);
+                    }
+                });
             }
             $('#freeHandButton').html('<i class="fa fa-check"></i>Enable Free Hand');
             $('#freeHandButton').removeClass('btn-warning');
             $('#freeHandButton').addClass('btn-success');
 
-            layer.on('click', function(e) {
-                bins = $("#customRange2")[0].valueAsNumber;
-                var bounds = e.sourceTarget._bounds;
-                var ne_lat = bounds._northEast.lat;
-                var ne_lng = bounds._northEast.lng;
-                var sw_lat = bounds._southWest.lat;
-                var sw_lng = bounds._southWest.lng;
-                $.ajax({
-                    url: "getHistogramWindow/?northeast_lat=" + ne_lat + "&northeast_lng=" + ne_lng + "&southwest_lat=" + sw_lat + "&southwest_lng=" + sw_lng + "&number_of_bins=" + bins,
-                    type: "GET",
-                    success: function(data) {
-                        window.globals.histogram_chart.data.labels = data.x;
-                        window.globals.histogram_chart.data.datasets[0].data = data.y;
-                        window.globals.histogram_chart.data.datasets[0].borderColor = "#ff0000";
-                        window.globals.histogram_chart.data.datasets[0].pointBorderColor = "#ff0000";
-                        window.globals.histogram_chart.data.datasets[0].pointBackgroundColor = "#ff0000";
-                        window.globals.histogram_chart.data.datasets[0].pointHoverBackgroundColor = "#ff0000";
-                        window.globals.histogram_chart.data.datasets[0].pointHoverBorderColor = "#ff0000";
-                        window.globals.histogram_chart.data.datasets[0].label = "Count per rock area for " + e.sourceTarget._popup._content;
-                        window.globals.histogram_chart.update();
-                    }
-                });
-            });
         });
         drawnItems.addLayer(drawer);
         window.globals.lastLayer = drawnItems.getLayerId(drawer);
     } else {
+        // Toggle the button from enable option to disable option
         $('#freeHandButton').html('<i class="fa fa-check"></i>Enable Free Hand');
         $('#freeHandButton').removeClass('btn-warning');
         $('#freeHandButton').addClass('btn-success');
@@ -490,7 +513,7 @@ map.on(L.Draw.Event.CREATED, function(event) {
         zoom_level: map.getZoom(),
         label_type: event.layerType,
         category_name: radio_label_class,
-        raster: window.globals.active_layer,
+        raster: window.globals.active_layer.options.id,
         geoJSON: geoJson
     };
     var _layer = draw_shapes(geoJson, event.layerType);
@@ -515,20 +538,20 @@ map.on(L.Draw.Event.CREATED, function(event) {
             }
         });
     } else {
-        showSnackBar("Adding objects to database is currently disabled.");
+        showSnackBar("Adding objects to database is currently enabled.");
         // Case to draw objects
-        // $.ajax({
-        //     url: "/webclient/addTiledLabel",
-        //     type: "POST",
-        //     dataType: "text",
-        //     data: JSON.stringify(requestObj),
-        //     success: function(data) {
-        //         showSnackBar(JSON.parse(data).message);
-        //     },
-        //     error: function(data) {
-        //         showSnackBar(JSON.parse(data).message);
-        //     }
-        // });
+         $.ajax({
+             url: "/webclient/addTiledLabel",
+             type: "POST",
+             dataType: "text",
+             data: JSON.stringify(requestObj),
+             success: function(data) {
+                 showSnackBar(JSON.parse(data).message);
+             },
+             error: function(data) {
+                 showSnackBar(JSON.parse(data).message);
+             }
+         });
     }
 });
 
@@ -541,13 +564,13 @@ map.on('draw:deleted', function(e) {
         if (layer instanceof L.Rectangle) {
             var label_type = "rectangle";
         } else if (layer instanceof L.Circle) {
-            //Workaround from https://github.com/Leaflet/Leaflet.draw/issues/701
+            // Workaround from https://github.com/Leaflet/Leaflet.draw/issues/701
             layer._map = layer._map || map;
             var label_type = "circle";
         } else if (layer instanceof L.Polygon) {
             var label_type = "polygon";
         } else {
-            return; //Not one of the possible label types
+            return; // Not one of the possible label types
         }
 
         var bounds = layer.getBounds();
@@ -571,19 +594,19 @@ map.on('draw:deleted', function(e) {
         }
 
     });
-
-    // $.ajax({
-    //     url: "/webclient/deleteTileLabels",
-    //     type: "POST",
-    //     dataType: "text",
-    //     data: JSON.stringify(request_obj),
-    //     success: function(data) {
-    //         showSnackBar(JSON.parse(data).message);
-    //     },
-    //     error: function(data) {
-    //         showSnackBar(JSON.parse(data).message);
-    //     }
-    // });
+    // This will delete the drawn labels from database.
+    $.ajax({
+        url: "/webclient/deleteTileLabels",
+        type: "POST",
+        dataType: "text",
+        data: JSON.stringify(request_obj),
+        success: function(data) {
+            showSnackBar(JSON.parse(data).message);
+        },
+        error: function(data) {
+            showSnackBar(JSON.parse(data).message);
+        }
+    });
 });
 
 window.globals.chart = $("#histogram").get(0).getContext("2d");
@@ -627,12 +650,26 @@ window.globals.histogram_chart = Chart.Bar(window.globals.chart, {
                     display: true,
                     labelString: 'Count'
                 }
-            }]
+                }
+            ]
         }
     }
 });
 
 map.on('moveend', function(e) {
+    // Load annotations from the database
+    $.getJSON({
+        url: "getAllTiledLabels/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" + map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() + "&southwest_lng=" + map.getBounds()._southWest.lng.toString(),
+        type: "GET",
+        success: function(data) {
+            geoData = data;
+            for(j = 0; j < drawnItems.getLayers().length; j++) {}
+            for(i = 0; i < geoData.length; i++) {
+                draw_shapes(geoData[i].geoJSON, geoData[i].geoJSON.type)
+            }
+        }
+    });
+
     bins = $("#customRange2")[0].valueAsNumber;
     $.ajax({
         url: "getHistogramWindow/?northeast_lat=" + map.getBounds()._northEast.lat.toString() + "&northeast_lng=" + map.getBounds()._northEast.lng.toString() + "&southwest_lat=" + map.getBounds()._southWest.lat.toString() + "&southwest_lng=" + map.getBounds()._southWest.lng.toString() + "&number_of_bins=" + bins,
@@ -651,7 +688,7 @@ map.on('moveend', function(e) {
     });
 
 });
-
+// Update histogram when user changes the bin size
 $("#customRange2").on( "click", function() {
     bins = $("#customRange2")[0].valueAsNumber;
     $("#customRange2label").text("Histogram Bins: " + $("#customRange2")[0].value);
@@ -672,6 +709,7 @@ $("#customRange2").on( "click", function() {
     });
 });
 
+// Creation of new categories
 $("#category_submit").click(function() {
     $("#category_submit").attr("disabled", true);
     if ($("#add_new_category").val()) {
@@ -720,5 +758,4 @@ function rgbToHex(i) {
     return "#" + componentToHex(result[0]) + componentToHex(result[1]) + componentToHex(result[2]);
 }
 
-change_draw_color();
 change_draw_color();
