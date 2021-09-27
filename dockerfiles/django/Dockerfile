@@ -26,4 +26,5 @@ RUN export C_INCLUDE_PATH=/usr/include/gdal >> /root/.bashrc
 RUN pip3.7 install GDAL==2.4.0 django-adminplus django-extensions==3.0.2 cairosvg requests matplotlib descartes ipython scipy shapely geojson bs4
 RUN pip3.7 install -U https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow_cpu-2.1.0-cp37-cp37m-manylinux2010_x86_64.whl
 RUN pip3.7 install torch torchvision rasterio shapely 
+RUN pip3.7 install djangorestframework==3.12.4
 ENV DJANGO_SETTINGS_MODULE agdss.settings.common

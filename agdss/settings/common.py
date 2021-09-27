@@ -39,7 +39,9 @@ CACHES = {
 # Application definition
 
 INSTALLED_APPS = [
+    'rest_framework',
     'webclient.apps.WebclientConfig',
+    'earthpod',
     #'django.contrib.admin',
     'django.contrib.admin.apps.SimpleAdminConfig',
     'adminplus',

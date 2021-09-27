@@ -32,6 +32,8 @@ admin.autodiscover()
 
 urlpatterns = [
 url(r'^webclient/', include('webclient.urls')),
+path('', include('earthpod.urls')),
+
 url(r'^admin/', admin.site.urls),
 url('^', include('django.contrib.auth.urls')),
 url('^register/', CreateView.as_view(
