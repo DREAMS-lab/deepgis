@@ -10,6 +10,16 @@ services:
       - persistent-storage:/var/lib/postgresql/data
     ports: 
       - "5432:5432"
+
+  grafana:
+    build: dockerfiles/grafana
+    container_name: grafana
+    ports:
+      - "4000:3000"
+    links:
+      - db
+    environment:
+      GF_USERS_DEFAULT_THEME: "light"
     
   martin: 
     image: urbica/martin
@@ -27,7 +37,7 @@ services:
     volumes:
       - ./:/app
     working_dir: /app
-    command: bash -c "python3 manage.py makemigrations webclient python3 manage.py makemigrations earthpod && python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
+    command: bash -c "python3 manage.py makemigrations webclient && python3 manage.py makemigrations earthpod && python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
 
 volumes:
   persistent-storage:
