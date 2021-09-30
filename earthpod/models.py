@@ -15,6 +15,7 @@ class EarthPod(models.Model):
 class EarthPodData(models.Model):
     earth_pod = models.ForeignKey('EarthPod', on_delete=models.CASCADE)
     datetime = models.DateTimeField()
+    datetime_pod = models.DateTimeField(null=True, blank=True)
     atmos_temperature = models.FloatField(null=True, blank=True)
     atmos_relative_humidity = models.FloatField(null=True, blank=True)
     atmos_pressure = models.FloatField(null=True, blank=True)
@@ -32,6 +33,7 @@ class EarthPodData(models.Model):
             "earth_pod_name": str(self.earth_pod.name),
             "earth_pod_id": str(self.earth_pod.pod_id),
             "datetime": str(self.datetime),
+            "datetime_pod": str(self.datetime_pod),
             "atmos_temperature": str(self.atmos_temperature),
             "atmos_relative_humidity": str(self.atmos_relative_humidity),
             "atmos_pressure" : str(self.atmos_pressure),
