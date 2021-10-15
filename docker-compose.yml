@@ -20,6 +20,9 @@ services:
       - db
     environment:
       GF_USERS_DEFAULT_THEME: "light"
+      GF_INSTALL_PLUGINS: natel-plotly-panel
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+
     
   martin: 
     image: urbica/martin

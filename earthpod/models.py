@@ -23,6 +23,8 @@ class EarthPodData(models.Model):
     soil_relative_humidity = models.FloatField(null=True, blank=True)
     soil_moisture_2cm = models.FloatField(null=True, blank=True)
     soil_moisture_5cm =  models.FloatField(null=True, blank=True)
+    battery_voltage = models.FloatField(null=True, blank=True)
+    light_analog = models.FloatField(null=True, blank=True)
 
     def __str__(self):
         return "Name:" + str(self.earth_pod.name) +  ", Datetime: " + str(self.datetime)
@@ -40,5 +42,7 @@ class EarthPodData(models.Model):
             "soil_temperature":str(self.soil_temperature),
             "soil_relative_humidity": str(self.soil_relative_humidity),
             "soil_moisture_2cm": str(self.soil_moisture_2cm),
-            "soil_moisture_5cm": str(self.soil_moisture_5cm)
+            "soil_moisture_5cm": str(self.soil_moisture_5cm),
+            "battery_voltage": str(self.battery_voltage),
+            "light_voltage": str(self.light_analog) 
         }

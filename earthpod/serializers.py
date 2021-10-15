@@ -20,6 +20,8 @@ class EarthPodDataSerializers(serializers.Serializer):
     soil_relative_humidity = serializers.FloatField(required=False)
     soil_moisture_2cm = serializers.FloatField(required=False)
     soil_moisture_5cm =  serializers.FloatField(required=False)
+    battery_voltage = serializers.FloatField(required=False)
+    light_analog = serializers.FloatField(required=False)
 
     def save(self):
         try:
@@ -41,6 +43,25 @@ class EarthPodDataSerializers(serializers.Serializer):
             soil_temperature = self.validated_data.pop('soil_temperature', None), 
             soil_relative_humidity = self.validated_data.pop('soil_relative_humidity', None), 
             soil_moisture_2cm = self.validated_data.pop('soil_moisture_2cm', None), 
-            soil_moisture_5cm = self.validated_data.pop('soil_moisture_5cm', None)
+            soil_moisture_5cm = self.validated_data.pop('soil_moisture_5cm', None),
+            battery_voltage = self.validated_data.pop('battery_voltage', None),
+            light_analog = self.validated_data.pop('light_analog', None),
         )
         return earth_pod_data_obj.to_json()
+
+
+# class EarthPodDataCSVSerializers(serializers.Serializer):
+#     from_datetime = serializers.IntegerField(required=False, validators=[MaxValueValidator(2147483647), MinValueValidator(1)])
+#     to_datetime = serializers.IntegerField(required=False, validators=[MaxValueValidator(2147483647), MinValueValidator(1)])()
+
+#     def validate_from_datetime(self, value):
+#         """
+#         Validate from Datetime Field
+#         """
+#         return datetime.utcfromtimestamp(value)
+
+#     def validate_from_datetime(self, value):
+#         """
+#         Validate from Datetime Field
+#         """
+#         return datetime.utcfromtimestamp(value)

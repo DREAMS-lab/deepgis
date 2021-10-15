@@ -11,4 +11,5 @@ from earthpod import views
 
 urlpatterns = [
 path('earthpoddata', views.EarthPodDataView.as_view()),
+path('earthpod_save_csv', views.EarthPodDataCSVView.as_view())
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
