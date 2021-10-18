@@ -25,7 +25,7 @@ class EarthPodDataSerializers(serializers.Serializer):
 
     def save(self):
         try:
-            earth_pod = EarthPod.objects.get(id = self.validated_data.pop('id'))
+            earth_pod = EarthPod.objects.get(pod_id = self.validated_data.pop('id'))
         except:
             raise Http404("Earth Pod does not exist")
 
