@@ -90,6 +90,10 @@ $('#imagemodal').on('hide.bs.modal', function (e) {
     $('#modal_body').html("");
 });
 
+// $(document).ready(function(){
+//     $("#exampleModal").modal('show');
+// });
+
 // Display all the drawn histograms in a single pop-up (modal) window for comparison. 
 $('#ShowAllHist').click(function () {
     var histogram_count = 1;
@@ -172,6 +176,7 @@ $('#ShowAllHist').click(function () {
     }
 });
 
+// Show snackbar for the text provided
 function showSnackBar(text) {
     var snackBar = document.getElementById("snackbar");
     snackBar.innerHTML = text;
@@ -184,6 +189,8 @@ function showSnackBar(text) {
 }
 
 updateCategoryProperties();
+
+// var tileSize = 256;
 
 var map = L.map('map', {
     minZoom: 1,
@@ -210,9 +217,10 @@ map.on('baselayerchange', function (e) {
 });
 
 // Display all raster objects in the database from their corresponding path to tile PNGs.
-function updateRaster(map) {
+function updateRaster(map, image_name = 'Landsat', comma_sep_bands = '1,2,3') {
     $.ajax({
         url: "/webclient/getRasterInfo",
+        data: { "image_name": image_name, "comma_sep_bands": comma_sep_bands},
         type: "GET",
         dataType: "json",
         success: function(response) {
@@ -225,9 +233,12 @@ function updateRaster(map) {
                     id: response.message[i].name,
                     noWrap: true
                 });
+                var minZoom = response.message[i].minZoom;
+                var maxZoom = response.message[i].maxZoom;
+
                 window.globals.rasters.push(layer);
                 window.globals.layers[response.message[i].name] = layer;
-                map.setView(response.message[i].lat_lng, 22);
+                map.setView(response.message[i].lat_lng, maxZoom);
                 window.globals.active_layer = layer;
             }
 /* 
@@ -258,9 +269,59 @@ function updateRaster(map) {
     });
 }
 
-updateRaster(map);
+updateRaster(map, null, null);
 // drawnItems will contain all the drawn features on the map.
 var drawnItems = L.featureGroup().addTo(map);
+
+/*
+var fragmentShader = `
+void main(void) {
+    vec4 texelColour = texture2D(uTexture0, vec2(vTextureCoords.s, vTextureCoords.t));
+	gl_FragColor = texelColour;
+}       
+`;
+
+console.log("the code runs");
+
+var antitoner = L.tileLayer.gl({
+    fragmentShader: fragmentShader,
+    tileUrls: [
+        'https://rocks-raster-tile-server.deepgis.org/data/Landsat_1/{z}/{x}/{y}.png'
+    ]
+}).addTo(map);
+
+//https://rocks-raster-tile-server.deepgis.org/data/Landsat_1.json
+
+console.log("the code is running");
+*/
+
+var fragmentShader = `
+void main(void) {
+	vec4 texelColour_layer1 = texture2D(uTexture0, vec2(vTextureCoords.s, vTextureCoords.t));
+	vec4 texelColour_layer2 = texture2D(uTexture1, vec2(vTextureCoords.s, vTextureCoords.t));
+    vec4 texelColour_layer3 = texture2D(uTexture1, vec2(vTextureCoords.s, vTextureCoords.t));
+    
+    float layer1Red   = texelColour_layer1.r; // visible red
+	float layer2Green = texelColour_layer2.g; // visible green
+	float layer3Blue  = texelColour_layer3.b; // visible blue
+
+	gl_FragColor = vec4(layer1Red, layer2Green, layer3Blue, 1.0);
+}       
+`;
+
+var RGB_tileUrls = [
+    'https://rocks-raster-tile-server.deepgis.org/data/Landsat_1/{z}/{x}/{y}.png',
+    'https://rocks-raster-tile-server.deepgis.org/data/Landsat_2/{z}/{x}/{y}.png',
+    'https://rocks-raster-tile-server.deepgis.org/data/Landsat_3/{z}/{x}/{y}.png'
+];
+
+function runRGB_FalseColor_WebGL(){
+    console.log('ran runRGB_FalseColor_WebGL code');
+    var antitoner = L.tileLayer.gl({
+        fragmentShader: fragmentShader,
+        tileUrls: RGB_tileUrls
+    }).addTo(map);
+};
 
 var drawControl = new L.Control.Draw({
     edit: {
@@ -282,6 +343,7 @@ var drawControl = new L.Control.Draw({
 drawControl.addTo(map);
 var histogram_polygons = 1;
 
+//Function for drawing shapes on the map using geoJson and label_type
 draw_shapes = function(geoJson, label_type) {
     geoJson.properties.options.weight = 0.5;
     if (label_type == "circle" || label_type == "Circle") {
@@ -759,3 +821,50 @@ function rgbToHex(i) {
 }
 
 change_draw_color();
+
+
+$("#RGB_false_color").click(function() {
+    console.log("RGB False color button was clicked");
+
+    var image_selected = $( "#image_select option:checked" ).val();
+    var red_band = $('#red_band').val()
+    var green_band = $('#green_band').val()
+    var blue_band = $('#blue_band').val()
+
+    console.log(image_selected);
+    console.log(red_band);
+    console.log(green_band);
+    console.log(blue_band);
+    
+    $.get( "getRGB_bandsFalseColor", { 
+        "image_selected": image_selected,"red_band": red_band,"green_band": green_band,"blue_band": blue_band  
+    }, function(data){
+        alert( "Data Loaded: " + data["status"] );
+        console.log(data["urls"]);
+        RGB_tileUrls = data["urls"];
+        runRGB_FalseColor_WebGL();
+        map.setView(data["lat_lng"], data["maxZoom"]);
+    });
+    console.log('RBG False color got updated');    
+});
+
+$("#single_band_visual").click(function() {
+    console.log("Single Band Button was clicked");
+
+    var image_selected = $( "#image_select option:checked" ).val();
+    var single_band_comma_sep = $('#comma_sep_band_nums').val();
+
+    console.log(image_selected);
+    console.log(single_band_comma_sep);
+
+    updateRaster(map, image_name = image_selected, comma_sep_bands = single_band_comma_sep);
+    console.log("Map got updated");
+
+});
+
+/*
+$("#save_change_image").mousedown(function() {
+    console.log("Button was clicked");
+});
+*/
+
