@@ -199,6 +199,42 @@ class RasterImage(models.Model):
     resolution = models.FloatField(default=-1)
     latitude = models.FloatField(default=0)
     longitude = models.FloatField(default=0)
+    has_bands = models.BooleanField(default = False)
+    max_bands = models.IntegerField(default = 0)
+
+    def __str__(self):
+        return str(self.name)
+
+    def bandAvailable(self, band_number):
+        return self.has_bands and band_number >= 1 and band_number <= self.max_bands
+
+    def getURL(self, band_number = 1):
+        if self.has_bands == False:
+            return self.path + "/{z}/{x}/{y}.png"
+        elif self.bandAvailable(band_number):
+            return self.path + "_" + str(band_number) + "/{z}/{x}/{y}.png"
+        else:
+            raise Exception("Not correct band_number")
+
+    def getRaster(self, band_number = 1):
+        if self.bandAvailable(band_number):
+            name = self.name + "_" + str(band_number)
+        else:
+            name = self.name
+        return {    "name": name,
+                    "path": self.getURL(band_number),
+                    "attribution": self.attribution,
+                    "minZoom": self.minZoom,
+                    "maxZoom": self.maxZoom,
+                    "resolution": self.resolution,
+                    "lat_lng": [self.latitude, self.longitude] 
+                }
+
+    def getLat_long(self):
+        return [self.latitude, self.longitude]
+    
+    def getMaxZoom(self):
+        return self.maxZoom
 
 
 class TiledGISLabel(models.Model):
