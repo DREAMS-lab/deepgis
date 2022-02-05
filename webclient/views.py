@@ -14,6 +14,7 @@ from urllib.parse import urljoin
 from urllib.request import urlopen
 import numpy as np
 import requests
+import simplekml
 import torch
 import torchvision
 from PIL import Image as PILImage
@@ -43,12 +44,14 @@ from webclient.image_ops.convert_images import convert_label_to_image_stream, co
 from webclient.models import Image, CategoryType, CategoryLabel, User, Labeler, ImageWindow, ImageLabel, GEOSGeometry
 from webclient.models import ImageSourceType, ImageFilter, datetime, get_color, TileSet, TiledLabel, TiledGISLabel, \
     RasterImage
+from webclient.commons.decorators import not_authenticated_check
 
 MODEL_SELECTED = None
 
 
 @login_required
 def index(request):
+    # URL: http://127.0.0.1:8000/webclient/
     template = loader.get_template('webclient/index.html')
     context = {}
     return HttpResponse(template.render(context, request))
@@ -56,6 +59,8 @@ def index(request):
 
 @login_required
 def view_label(request):
+    #Not in use
+    # URL: http://127.0.0.1:8273/webclient/view_label
     template = loader.get_template('webclient/view_label.html')
     context = {}
     return HttpResponse(template.render(context, request))
@@ -63,6 +68,7 @@ def view_label(request):
 
 @login_required
 def label(request):
+
     latest_image_list = Image.objects.all()
     template = loader.get_template('webclient/label.html')
     if latest_image_list:
@@ -75,6 +81,7 @@ def label(request):
     return HttpResponse(template.render(context, request))
 
 
+#Not in Use, Can be deleted
 @login_required
 def results(request):
     template = loader.get_template('webclient/results.html')
@@ -89,17 +96,19 @@ def map_label(request):
         'categories': {cat.category_name: str(cat.color) for cat in CategoryType.objects.all()}
     }
     request.session['prev_multipoly'] = str(MultiPolygon())
+    # print(context) # {'categories': {'tomatoes': 'None'}}
     return HttpResponse(template.render(context, request))
 
 
 @login_required
 @require_POST
 @csrf_exempt
+@not_authenticated_check
 def create_mask(request):
     user = request.user
-    print(user)
-    if not user.is_authenticated:
-        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    # print(user)
+    # if not user.is_authenticated:
+    #     return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
     post_request = json.load(request)
     labels = post_request['labels']
     if len(labels) == 0:
@@ -130,11 +139,23 @@ def create_mask(request):
     return JsonResponse({"status": "success", "message": file_path}, safe=False)
 
 
+"""
+{
+    "status": "success", 
+    "message": {
+        "1": {"parent_image": "/static/small-tomatoes/IMG_2592.JPG", "height": 1920, \
+            "width": 1280, "padding_x": 0, "padding_y": 0, "timetaken": 338321, \
+                "labelcount": 16, "number": 1, "labeler": "admin"}, 
+        "2": {"parent_image": "/static/small-tomatoes/IMG_2575.JPG", "height": 1920, \
+            "width": 1280, "padding_x": 0, "padding_y": 0, "timetaken": 284252, \
+                "labelcount": 24, "number": 2, "labeler": "admin"}}}
+"""
 @login_required
+@not_authenticated_check
 def display_annotations(request):
     user = request.user
-    if not user.is_authenticated:
-        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    # if not user.is_authenticated:
+    #     return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
 
     _user = User.objects.filter(username=user)[0]
     if _user.is_staff or _user.is_superuser:
@@ -174,10 +195,11 @@ def display_annotations(request):
 
 @csrf_exempt
 @login_required
+@not_authenticated_check
 def edit_image_label(request):
-    user = request.user
-    if not user.is_authenticated:
-        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    # user = request.user
+    # if not user.is_authenticated:
+    #     return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
     image_label_id = request.GET['image_id']
     image_label = ImageLabel.objects.filter(id=image_label_id)[0]
     img = image_label.parentImage
@@ -238,10 +260,11 @@ def edit_image_label(request):
 
 @csrf_exempt
 @login_required
+@not_authenticated_check
 def select_models(request):
-    user = request.user
-    if not user.is_authenticated:
-        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    # user = request.user
+    # if not user.is_authenticated:
+    #     return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
     get_request = json.load(request)
     global MODEL_SELECTED
     MODEL_SELECTED = "/app/models/" + get_request["model_id"]
@@ -250,10 +273,11 @@ def select_models(request):
 
 
 @login_required
+@not_authenticated_check
 def display_models(request):
     user = request.user
-    if not user.is_authenticated:
-        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    # if not user.is_authenticated:
+    #     return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
 
     _user = User.objects.filter(username=user)[0]
 
@@ -281,6 +305,8 @@ def apply_labels(request):
     except json.JSONDecodeError:
         print("Could not decode")
         return HttpResponseBadRequest("Could not decode JSON")
+
+    print(get_request)
     try:
         label_list_ = get_request['label_list']
         category_labels = get_request['category_labels']
@@ -309,6 +335,7 @@ def apply_labels(request):
         image_label.pub_date = datetime.now()
         image_label.timeTaken = int(image_label.timeTaken) + time_taken
         image_label.save()
+        print("image_label = ", image_label)
         CategoryLabel.objects.filter(parent_label=image_label).delete()
         response = {"status": "success", "message": "Successfully updated annotations"}
     else:
@@ -335,6 +362,7 @@ def apply_labels(request):
                                  labeler=labeler, imageWindow=image_window,
                                  timeTaken=time_taken)
         image_label.save()
+        print("image_label = ", image_label)
         response = {"status": "success", "message": "Successfully added annotations"}
 
     for category_name, _ in category_labels.items():
@@ -408,6 +436,13 @@ def get_info(request):
 @require_GET
 @csrf_exempt
 def get_category_info(request):
+    """
+    Gets all the Category and their corresponding colors.
+    This API is used in displaying the side navbar
+
+    Sample Output:
+        {"rocks": {"color": "rgb(255, 0, 0)"}, "new_category": {"color": "rgb(0, 174, 126)"}}
+    """
     response = {}
     for category in CategoryType.objects.all():
         response[category.category_name] = {
@@ -765,11 +800,12 @@ re_image_path = re.compile(r'/%s%s(.*)' % ('webclient', settings.STATIC_URL))
 
 
 @require_GET
+@not_authenticated_check
 def get_overlayed_combined_image(request, image_label_id):
     user = request.user
-    print(user)
-    if not user.is_authenticated:
-        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    # print(user)
+    # if not user.is_authenticated:
+    #     return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
     image_label = ImageLabel.objects.filter(id=image_label_id)
     if not image_label:
         return HttpResponseBadRequest('Bad image_label_id: ' + image_label_id)
@@ -790,11 +826,12 @@ def get_overlayed_combined_image(request, image_label_id):
 
 @never_cache
 @require_GET
+@not_authenticated_check
 def get_overlayed_combined_gif(request, image_label_id):
     user = request.user
-    print(user)
-    if not user.is_authenticated:
-        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    # print(user)
+    # if not user.is_authenticated:
+    #     return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
     image_label = ImageLabel.objects.filter(id=image_label_id)
     if not image_label:
         return HttpResponseBadRequest('Bad image_label_id: ' + image_label_id)
@@ -913,11 +950,12 @@ def print_label_data():
 
 @csrf_exempt
 @require_POST
+@not_authenticated_check
 def add_raster(request):
     request_json = json.load(request)
-    user = request.user
-    if not user.is_authenticated:
-        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    # user = request.user
+    # if not user.is_authenticated:
+    #     return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
     raster_image = RasterImage()
     raster_image.name = request_json["name"]
     raster_image.path = request_json["path"]
@@ -930,39 +968,89 @@ def add_raster(request):
                 "message": "Successfully added the raster image"}
     return JsonResponse(resp_obj)
 
-
+@not_authenticated_check
 @csrf_exempt
 @require_GET
 def get_raster_info(request):
-    user = request.user
-    print(user)
-    if not user.is_authenticated:
-        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    """
+    Returns the details about the raster images in DB
+    """
+    #print(request.GET)
+
     rasters = []
-    data = RasterImage.objects.all()
-    for raster in data:
-        single_raster = {
-            "name": raster.name,
-            "path": raster.path,
-            "attribution": raster.attribution,
-            "minZoom": raster.minZoom,
-            "maxZoom": raster.maxZoom,
-            "resolution": raster.resolution,
-            "lat_lng": [raster.latitude, raster.longitude]
-        }
-        rasters.append(single_raster)
+    image_select_str = request.GET.get('image_name', None)
+    #print("image_select_str = ", image_select_str)
+    if image_select_str is None or len(image_select_str) == 0:
+        data = RasterImage.objects.filter(has_bands = False)
+        #data = []
+        for raster in data:
+            rasters.append(raster.getRaster())
+    else:
+        try:
+            image_obj = RasterImage.objects.get( name = image_select_str)
+            comma_sep_bands = request.GET.get('comma_sep_bands', None)
+            comma_sep_bands_arr = list(map(int, str(comma_sep_bands).split(',')))
+        except:
+            return JsonResponse({
+                "status": "failure", "message": "Wrong band numbers or Image Name"}, safe=False)
+        for band in comma_sep_bands_arr:
+            rasters.append(image_obj.getRaster(band))
+    
     resp_obj = {"status": "success",
                 "message": rasters}
+    #print(rasters)
     return JsonResponse(resp_obj)
 
+@require_GET
+def get_rgb_bands_false_color(request):
+    image_select_str = str(request.GET.get('image_selected', None))
+    red_band = int(request.GET.get('red_band', None))
+    green_band = int(request.GET.get('green_band', None))
+    blue_band = int(request.GET.get('blue_band', None))
 
+    #print(red_band, green_band, blue_band)
+
+    image_obj = RasterImage.objects.get( name = image_select_str)
+
+    output_urls = []
+
+    for band in [red_band, green_band, blue_band]:
+        if not image_obj.bandAvailable(band):
+            return JsonResponse({"status": "failure", "message": "Wrong band numbers"}, safe=False)
+        output_urls.append( image_obj.getURL(band) )
+
+    #print(request.GET)
+    #print(output_urls)
+
+    resp_obj = {
+        "status": "success", "urls": output_urls, 'lat_lng': image_obj.getLat_long(),
+        "minZoom": image_obj.getMaxZoom()
+        }
+    return JsonResponse(resp_obj)
+
+@not_authenticated_check
 @csrf_exempt
 @require_POST
 def add_tiled_label(request):
+    """
+    Adds Tiled Label to the DB
+
+    Params:
+    northeast_lat:
+    northeast_lng:
+    southwest_lat:
+    southwest_lng:
+    zoom_level:
+    raster:
+    category_name:
+    label_type:
+    geometry:
+    geoJSON:
+    """
     request_json = json.load(request)
     user = request.user
-    if not user.is_authenticated:
-        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    # if not user.is_authenticated:
+    #     return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
     tiled_label = TiledGISLabel()
     tiled_label.northeast_Lat = request_json["northeast_lat"]
     tiled_label.northeast_Lng = request_json["northeast_lng"]
@@ -1034,22 +1122,99 @@ def add_tiled_label1(request):
     return JsonResponse({"status": "failure", "message": f"{line_count}"}, safe=False)
 
 
-@csrf_exempt
-def get_all_tiled_labels(request):
-    user = request.user
-    print(user)
-    if not user.is_authenticated:
-        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+# @not_authenticated_check
+def get_polygon_vectorfile(request, id):
+    kml = simplekml.Kml()
 
+    try:
+        label_obj = TiledGISLabel.objects.get(id = id)
+        json_obj = json.loads(label_obj.label_json)
+        coord = json_obj["geometry"]['coordinates']
+    except:
+        return JsonResponse({"status": "failure", "message": "The Polygon object does not exists"})
+    kml.newpolygon(name="label polygon", outerboundaryis = coord)
+    
+    response = HttpResponse(kml.kml())
+    response['Content-Disposition'] = 'attachment; filename="polygon.kml"'
+    response['Content-Type'] = 'application/kml'
+    return response
+
+def get_vectorfile_from_bounds(request):
     xmin = float(request.GET.get("southwest_lng"))
     ymin = float(request.GET.get("southwest_lat"))
     xmax = float(request.GET.get("northeast_lng"))
     ymax = float(request.GET.get("northeast_lat"))
+
+    #Gets all the Polygons inside the bounding box
+    bbox = (xmin, ymin, xmax, ymax)
+    current_bbox = Polygon.from_bbox(bbox)
+    result_set = []
+    query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox)
+
+    if len(query_set) == 0:
+        return JsonResponse({"status": "failure", "message": "No Polygon exists inside the box"})
+
+    kml = simplekml.Kml()
+    for poly_obj in query_set:
+        json_obj = json.loads(poly_obj.label_json)
+        coord = json_obj["geometry"]['coordinates']
+        kml.newpolygon(name="label polygon", outerboundaryis = coord)
+
+    response = HttpResponse(kml.kml())
+    response['Content-Disposition'] = 'attachment; filename="polygon.kml"'
+    response['Content-Type'] = 'application/kml'
+    return response
+
+""" # To be deleted later
+import matplotlib.pyplot as plt
+import numpy as np
+
+from skimage import data
+from skimage import exposure
+from skimage.exposure import match_histograms
+
+def apply_gaussian_matching():
+
+    mu, sigma = 128, 40 # mean and standard deviation
+
+    reference = data.coffee()
+    image = data.chelsea()
+
+    number_of_channels = image.shape[2]
+    ref_data = []
+    for i in range(number_of_channels):
+        s = np.random.normal(mu, sigma, 2500).reshape((50, 50))
+        ref_data.append(s)
+
+    reference = np.dstack(ref_data)
+
+    matched = match_histograms(image, reference, multichannel= True)
+"""
+    
+
+
+
+
+
+
+@csrf_exempt
+@not_authenticated_check
+def get_all_tiled_labels(request):
+    user = request.user
+    # print(user)
+    # if not user.is_authenticated:
+    #     return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+
+    xmin = float(request.GET.get("southwest_lng"))
+    ymin = float(request.GET.get("southwest_lat"))
+    xmax = float(request.GET.get("northeast_lng"))
+    ymax = float(request.GET.get("northeast_lat")) 
     bbox = (xmin, ymin, xmax, ymax)
     current_bbox = Polygon.from_bbox(bbox)
 
     response_obj = []
     prev_boxes_wkt = request.session.get('prev_multipoly')
+    # Well-known text representation of geometry (wkt)
     previous_boxes = MultiPolygon.from_ewkt(prev_boxes_wkt)
     new_polygon = Polygon()
     for polygon in previous_boxes:
@@ -1074,6 +1239,7 @@ def get_all_tiled_labels(request):
     return JsonResponse(response_obj, safe=False)
 
 
+#Cache timeout in 6000 seconds
 @cache_page(6000)
 @csrf_exempt
 def get_histogram_for_window(request):
@@ -1081,8 +1247,10 @@ def get_histogram_for_window(request):
     ymin = float(request.GET.get("southwest_lat"))
     xmax = float(request.GET.get("northeast_lng"))
     ymax = float(request.GET.get("northeast_lat"))
+    #Numbers of bins for the histogram
     number_of_bins = int(request.GET.get("number_of_bins"))
 
+    #Gets all the Polygons inside the bounding box
     bbox = (xmin, ymin, xmax, ymax)
     current_bbox = Polygon.from_bbox(bbox)
     result_set = []
@@ -1098,6 +1266,8 @@ def get_histogram_for_window(request):
     # Update the 50 value to whatever range the histogram x-axis should be plotted. 
     # It's set to 2m in rocks deepgis, but it can be adjusted. 
     # TODO: take this as user input
+    
+    #Finds histogram 
     result = np.histogram(np.array(result_set).astype(np.float32), bins=np.linspace(0, 50, num=number_of_bins))
 
     x = []
@@ -1180,11 +1350,15 @@ def add_all_tiled_categories():
 
 @csrf_exempt
 @require_POST
+@not_authenticated_check
 def delete_tile_label(request):
-    user = request.user
-    print(user)
-    if not user.is_authenticated:
-        return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
+    """
+    Deletes tile labels
+    """
+    # user = request.user
+    # print(user)
+    # if not user.is_authenticated:
+    #     return JsonResponse({"status": "failure", "message": "Authentication failure"}, safe=False)
 
     request_list = json.load(request)
     to_delete = []
@@ -1241,6 +1415,7 @@ def add_tileset(request):
     valid_zoom_levels = [z for z in range(30) if request.head(urljoin(tile_set.base_location, z)).status_code == 200]
 
 
+#Need a request as parameter for the function to work
 @csrf_exempt
 @require_GET
 def get_tiled_label_coordinates():
@@ -1251,6 +1426,7 @@ def get_tiled_label_coordinates():
     return JsonResponse(lat_long, safe=False)
 
 
+#Need a request as parameter for the function to work
 @csrf_exempt
 @require_GET
 def get_combined_label_geojson():

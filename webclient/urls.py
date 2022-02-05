@@ -49,4 +49,7 @@ urlpatterns = [
     path('getCategoryInfo', views.get_category_info),
     path('getTiledLabelCoordinates', views.get_tiled_label_coordinates),
     path('getCombinedLabelGeojson', views.get_combined_label_geojson),
+    path('getPolyVectorFile/<int:id>/', views.get_polygon_vectorfile),
+    path('getVectorFileFromBounds', views.get_vectorfile_from_bounds),
+    path('getRGB_bandsFalseColor', views.get_rgb_bands_false_color),
     ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
