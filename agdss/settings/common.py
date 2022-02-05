@@ -153,3 +153,5 @@ STATICFILES_DIRS = (
 
 MEDIA_ROOT = '/app/media-root/'
 MEDIA_URL = '/media/'
+
+SILENCED_SYSTEM_CHECKS = ["models.W042"]
