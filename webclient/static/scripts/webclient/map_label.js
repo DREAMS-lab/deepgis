@@ -192,6 +192,38 @@ updateCategoryProperties();
 
 // var tileSize = 256;
 
+// L.Control.Layers.prototype._addItem = function(obj) {
+
+//     var label = document.createElement('label'),
+//         input,
+//         checked = this._map.hasLayer(obj.layer);
+
+//     if (obj.overlay) {
+//         input = document.createElement('input');
+//         input.type = 'checkbox';
+//         input.className = 'leaflet-control-layers-selector';
+//         input.defaultChecked = checked;
+//     }
+//     else {
+//         input = this._createRadioElement('leaflet-base-layers', checked);
+//     }
+
+//     input.layerId = L.stamp(obj.layer);
+
+//     L.DomEvent.on(input, 'click', this._onInputClick, this);
+
+//     var name = document.createElement('span');
+//     name.innerHTML = ' ' + obj.name;
+
+//     label.appendChild(input);
+//     label.appendChild(name);
+//     label.className = obj.overlay ? "checkbox" : "radio";
+//     var container = obj.overlay ? this._overlaysList : this._baseLayersList;
+//     container.appendChild(label);
+
+//     return label;
+// }
+
 var map = L.map('map', {
     minZoom: 1,
     maxZoom: 22,
@@ -199,6 +231,36 @@ var map = L.map('map', {
     updateWhenIdle: true,
     preferCanvas: true
 });
+
+var options = {
+    onEachFeature: function(feature, layer) {
+        if (feature.properties) {
+            layer.bindPopup(Object.keys(feature.properties).map(function(k) {
+                if(k === '__color__'){
+                    return;
+                }
+                return k + ": " + feature.properties[k];
+            }).join("<br />"), {
+                maxHeight: 200
+            });
+        }
+    },
+    style: function(feature) {
+        return {
+            opacity: 1,
+            fillOpacity: 0.7,
+            radius: 6,
+            color: feature.properties.__color__
+        }
+    },
+    pointToLayer: function(feature, latlng) {
+        return L.circleMarker(latlng, {
+            opacity: 1,
+            fillOpacity: 0.7,
+            color: feature.properties.__color__
+        });
+    }
+};
 
 // Base map layer is a Mapbox API layer for visualization of the location
 mapbox = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
@@ -215,6 +277,84 @@ mapbox.addTo(map);
 map.on('baselayerchange', function (e) {
     window.globals.active_layer = e.name;
 });
+
+/*
+var shpfile = new L.Shapefile('static/zipped_shpfile/maSP.zip', {
+    onEachFeature: function(feature, layer) {
+        if (feature.properties) {
+            layer.bindPopup(Object.keys(feature.properties).map(function(k) {
+                return k + ": " + feature.properties[k];
+            }).join("<br />"), {
+                maxHeight: 200
+            });
+        }
+    }
+});
+
+shpfile.addTo(map);
+shpfile.once("data:loaded", function() {
+    console.log("finished loaded shapefile");
+});
+*/
+
+
+// var geojsonFeature = {
+//     "type": "Feature",
+//     "properties": {"party": "Republican"},
+//     "geometry": {
+//         "type": "Polygon",
+//         "coordinates": [[
+//             [-104.05, 48.99],
+//             [-97.22,  48.98],
+//             [-96.58,  45.94],
+//             [-104.03, 45.94],
+//             [-104.05, 48.99]
+//         ]]
+//     }
+// };
+// L.geoJSON(geojsonFeature).addTo(map);
+
+
+// var vector_tile = L.tileLayer(
+//     'https://rocks-raster-tile-server.deepgis.org/data/merged_crowns/{z}/{x}/{y}.pbf', 
+//     { attribution: 'ASU'});
+    
+// vector_tile.addTo(map);
+
+// var vector_tile = L.vectorGrid.protobuf(
+//     "https://rocks-raster-tile-server.deepgis.org/data/merged_crowns/{z}/{x}/{y}.pbf", {
+//                 maxNativeZoom: 20,
+//                 // vectorTileLayerStyles: {
+//                 //     "public.webclient_tiledgislabel": {
+//                 //         fillOpacity: 0.05,
+//                 //         color: 'red',
+//                 //         weight: 0.5,
+//                 //         stroke: true,
+//                 //         fill: true,
+//                 //     }
+//                 // },
+//             });
+// console.log("vector tile is", vector_tile);
+// vector_tile.addTo(map);
+
+
+
+
+// shp("http://localhost:8273/webclient/static/shp_file/TOWNSSURVEY_POLYM").then(function(geojson){
+//     //do something with your geojson
+//     console.log("This function ran");
+//     console.log(geojson);
+//     L.geoJSON(geojson).addTo(map);
+// });
+
+// console.log(window. location);
+
+// //webclient/static/scripts/webclient/map_label.js
+// shp("../../shp_file/CONGRESS113_POLY").then(function(geojson){
+//     //do something with your geojson
+//     console.log("2nd function ran");
+//     console.log(geojson);
+// });
 
 // Display all raster objects in the database from their corresponding path to tile PNGs.
 function updateRaster(map, image_name = 'Landsat', comma_sep_bands = '1,2,3') {
@@ -823,6 +963,9 @@ function rgbToHex(i) {
 change_draw_color();
 
 
+/*
+Action when person clicks on RGB False color button
+*/
 $("#RGB_false_color").click(function() {
     console.log("RGB False color button was clicked");
 
@@ -848,10 +991,13 @@ $("#RGB_false_color").click(function() {
     console.log('RBG False color got updated');    
 });
 
+/*
+Action when person clicks on Single band Visualization button
+*/
 $("#single_band_visual").click(function() {
     console.log("Single Band Button was clicked");
 
-    var image_selected = $( "#image_select option:checked" ).val();
+    var image_selected = $( "#image_select_raster option:checked" ).val();
     var single_band_comma_sep = $('#comma_sep_band_nums').val();
 
     console.log(image_selected);
@@ -862,9 +1008,184 @@ $("#single_band_visual").click(function() {
 
 });
 
+
+
 /*
-$("#save_change_image").mousedown(function() {
-    console.log("Button was clicked");
-});
+Code for small shape file visualization using frontend
 */
 
+var shapefile, m ;
+    
+function handleFileSelect(evt) {
+    var files = evt.target.files; // FileList object
+    console.log(files);
+    var selFile = files[0];
+    handleFile(selFile);
+}
+
+function handleFile(file){
+var reader = new FileReader();
+    reader.onload = function(e) {
+
+        shapefile = new L.Shapefile(e.target.result,{isArrayBufer:true});
+        shapefile.on("data:loaded", function (e){
+            map.fitBounds(shapefile.getBounds());
+        });
+        shapefile.addTo(map);
+    };
+
+    reader.onerror = function(e) {
+        console.log(e);
+    };
+    reader.readAsArrayBuffer(file);
+
+}
+
+document.getElementById('file').addEventListener('change', handleFileSelect, false);
+function init(){
+    
+    var dropbox = document.getElementById("map");
+    dropbox.addEventListener("dragenter", dragenter, false);
+    dropbox.addEventListener("dragover", dragover, false);
+    dropbox.addEventListener("drop", drop, false);
+    dropbox.addEventListener("dragleave", function() {
+        map.scrollWheelZoom.enable();
+    }, false);
+
+    function dragenter(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        map.scrollWheelZoom.disable();
+    }
+
+    function dragover(e) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+
+    function drop(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        map.scrollWheelZoom.enable();
+        var dt = e.dataTransfer;
+        var files = dt.files;
+
+        var i = 0;
+        var len = files.length;
+        if (!len) {
+            return
+        }
+        while (i < len) {
+            handleFile(files[i]);
+            i++;
+        }
+    }
+}
+
+init();
+
+/*
+Code for small shape file visualization using frontend ends here
+*/
+
+/*
+Code for Vector Tile Visulization
+*/
+
+var vector_tile;
+
+function VectorTileShow(data){
+    console.log(data);
+    vector_tile = L.vectorGrid.protobuf( data["path"], {
+                maxNativeZoom: data["maxZoom"],
+            });
+    console.log(vector_tile);
+    vector_tile.addTo(map);
+    map.setView(data["lat_lng"], data["maxZoom"]);
+}
+
+
+$("#vector_image_show").click(function() {
+    console.log("Vector Image Button was clicked");
+
+    var image_selected = $( "#image_select_vector option:checked" ).val();
+    console.log(image_selected);
+
+    $.ajax({
+        url: "/webclient/getVectorInfo",
+        data: { "image_name": image_selected,},
+        type: "GET",
+        dataType: "json",
+        success: function(response) {
+            if (response["status"] == "success"){
+                console.log(response);
+                VectorTileShow(response["message"]);
+            }
+        },
+        error: function(xhr, errmsg, err) {
+            alert(xhr.status + ": " + xhr.responseText);
+        }
+    });
+
+    console.log("Map with Vector Tile got updated");
+
+});
+
+
+/*
+To create dynamically the dropdown in modals (Raster and Vector Tiles)
+*/
+
+function createDropdown(target, data){
+
+    var input = document.getElementById(target);
+    for (var i = 0; i < data.length; i++) {
+        var element = document.createElement("option");
+        element.innerText = data[i]["name"]; 
+        element.setAttribute("value", data[i]["value"]);
+        input.appendChild(element);
+
+    }
+
+}
+
+function loadModalRaster(){
+
+    $.ajax({
+        url: "/webclient/getAllRasterBands",
+        type: "GET",
+        dataType: "json",
+        success: function(response) {
+            if (response["status"] == "success"){
+                createDropdown("image_select_raster", response["message"]);
+            }
+        },
+        error: function(xhr, errmsg, err) {
+            alert(xhr.status + ": " + xhr.responseText);
+        }
+    });
+}
+loadModalRaster();
+
+function loadModalVector(){
+
+    $.ajax({
+        url: "/webclient/getAllVectors",
+        type: "GET",
+        dataType: "json",
+        success: function(response) {
+            if (response["status"] == "success"){
+                console.log(response);
+                createDropdown("image_select_vector", response["message"]);
+            }
+        },
+        error: function(xhr, errmsg, err) {
+            alert(xhr.status + ": " + xhr.responseText);
+        }
+    });
+}
+loadModalVector();
+
+/*
+To create dynamically the dropdown in modals (Raster and Vector Tiles) ---- ends here
+*/

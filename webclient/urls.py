@@ -52,4 +52,7 @@ urlpatterns = [
     path('getPolyVectorFile/<int:id>/', views.get_polygon_vectorfile),
     path('getVectorFileFromBounds', views.get_vectorfile_from_bounds),
     path('getRGB_bandsFalseColor', views.get_rgb_bands_false_color),
+    path('getVectorInfo', views.get_vector_info),
+    path('getAllRasterBands', views.get_all_raster_bands),
+    path('getAllVectors', views.get_all_vectors),
     ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

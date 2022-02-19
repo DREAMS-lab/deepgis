@@ -43,7 +43,7 @@ from webclient.image_ops.convert_images import convert_label_to_image_stream, co
     convert_image_labels_to_svg_array, combine_all_labels
 from webclient.models import Image, CategoryType, CategoryLabel, User, Labeler, ImageWindow, ImageLabel, GEOSGeometry
 from webclient.models import ImageSourceType, ImageFilter, datetime, get_color, TileSet, TiledLabel, TiledGISLabel, \
-    RasterImage
+    RasterImage, VectorTileImage
 from webclient.commons.decorators import not_authenticated_check
 
 MODEL_SELECTED = None
@@ -1451,3 +1451,46 @@ def add_new_category(request):
             return JsonResponse({"result": "failure", "reason": data + " already exists."}, safe=False)
 
     return JsonResponse({"result": "success", "data": data, "color": str(color)}, safe=False)
+
+
+def get_vector_info(request):
+    """
+    Returns the details about the Vector images in DB
+    """
+    image_select_str = request.GET.get('image_name', None)
+    
+    try:
+        image_obj = VectorTileImage.objects.get( name = image_select_str)
+    except:
+        return JsonResponse({
+                "status": "failure", "message": "Wrong Image Name"}, safe=False)
+
+    vector_img_info =  image_obj.getInfo()
+    
+    resp_obj = {"status": "success",
+                "message": vector_img_info}
+    return JsonResponse(resp_obj)
+
+
+def get_all_raster_bands(request):
+    query = RasterImage.objects.filter(has_bands = True)
+
+    band_info = []
+    for obj in query:
+        string = obj.name + "( 1 to " +  str(obj.max_bands) + " bands )"
+        band_info.append( { "value": obj.name, "name": string } )
+
+    resp_obj = {"status": "success",
+                "message": band_info}
+    return JsonResponse(resp_obj)
+
+def get_all_vectors(request):
+    query = VectorTileImage.objects.all()
+
+    vector_info = []
+    for obj in query:
+        vector_info.append( { "value": obj.name, "name": obj.name } )
+
+    resp_obj = {"status": "success",
+                "message": vector_info}
+    return JsonResponse(resp_obj)

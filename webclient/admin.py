@@ -15,6 +15,7 @@ admin.site.register(Color)
 admin.site.register(TiledLabel)
 admin.site.register(TiledGISLabel)
 admin.site.register(RasterImage)
+admin.site.register(VectorTileImage)
 
 class CategoryLabelInline(admin.TabularInline):
     model = CategoryLabel

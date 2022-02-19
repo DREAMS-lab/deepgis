@@ -261,3 +261,30 @@ class TiledGISLabel(models.Model):
         default="R"
     )
     geometry = models.GeometryField()
+
+
+class VectorTileImage(models.Model):
+    name = models.CharField(max_length=5000, unique=True)
+    path = models.CharField(max_length=5000)
+    attribution = models.CharField(max_length=5000)
+    minZoom = models.FloatField()
+    maxZoom = models.FloatField()
+    resolution = models.FloatField(default=-1)
+    latitude = models.FloatField(default=0)
+    longitude = models.FloatField(default=0)
+
+    def __str__(self):
+        return str(self.name)
+
+    def getURL(self):
+        return self.path + "/{z}/{x}/{y}.pbf"
+
+    def getInfo(self):
+        return {    "name": self.name,
+                    "path": self.getURL(),
+                    "attribution": self.attribution,
+                    "minZoom": self.minZoom,
+                    "maxZoom": self.maxZoom,
+                    "resolution": self.resolution,
+                    "lat_lng": [self.latitude, self.longitude] 
+                }

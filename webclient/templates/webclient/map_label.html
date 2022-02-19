@@ -22,6 +22,11 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-freehandshapes@0.3.7/dist/leaflet-freehandshapes.min.js"></script>
     <script src="https://unpkg.com/leaflet.vectorgrid@latest/dist/Leaflet.VectorGrid.bundled.js"></script>
     <script src='https://unpkg.com/leaflet.tilelayer.gl@latest/src/Leaflet.TileLayer.GL'></script>
+    <!-- <script src="/static/scripts/requirejs/require.js"> </script> -->
+    <script src="/static/scripts/catiline/catiline.js"></script>
+    <script src="/static/scripts/leaflet_shapefile/leaflet_old.shpfile.js"></script>
+    <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+    
 
 </head>
 
@@ -64,23 +69,27 @@
     </div>
 
     <!-- Button trigger modal -->
-<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
-    Select image and bands
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rasterImageModal">
+    Select Raster image and bands
   </button>
+
+<input type="file" id="file" />
   
-  <!-- Modal -->
-  <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#vectorImageModal">
+    Select Vector File
+  </button>
+
+  <!-- Modal for Raster Images -->
+  <div class="modal fade" id="rasterImageModal" tabindex="-1" aria-labelledby="rasterImageModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="exampleModalLabel">Image and Band Selector</h5>
+          <h5 class="modal-title" id="rasterImageModalLabel">Image and Band Selector</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-            <select class="form-select" id="image_select" aria-label="Default select example">
+            <select class="form-select" id="image_select_raster" aria-label="Default select example">
                 <option selected>Select the image</option>
-                <option value="Landsat">Landsat (1-7 bands)</option>
-                <option value="Ohia">Ohia (1-146 bands)</option>
             </select>
             <div class="input-group">
                 <span class="input-group-text">Red, Green and Blue Band</span>
@@ -104,6 +113,31 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal for Vector Images -->
+  <div class="modal fade" id="vectorImageModal" tabindex="-1" aria-labelledby="vectorImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="vectorImageModalLabel"> Vector Image Selector</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <select class="form-select" id="image_select_vector" aria-label="Default select example">
+                <option selected>Select the Vector Tile Image</option>
+            </select>
+
+            </div>
+            <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" value="clickme" id="vector_image_show" class="btn btn-primary">Show Image</button>
+            </div>
+      </div>
+    </div>
+  </div>
+
+
+
 
 
     <div id="page-content-wrapper">
