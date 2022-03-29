@@ -16,6 +16,7 @@ admin.site.register(TiledLabel)
 admin.site.register(TiledGISLabel)
 admin.site.register(RasterImage)
 admin.site.register(VectorTileImage)
+admin.site.register(SHPFile)
 
 class CategoryLabelInline(admin.TabularInline):
     model = CategoryLabel

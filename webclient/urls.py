@@ -55,4 +55,5 @@ urlpatterns = [
     path('getVectorInfo', views.get_vector_info),
     path('getAllRasterBands', views.get_all_raster_bands),
     path('getAllVectors', views.get_all_vectors),
+    path('upload_shp_file', views.upload_shape_file),
     ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -43,10 +43,18 @@ from webclient.image_ops.convert_images import convert_label_to_image_stream, co
     convert_image_labels_to_svg_array, combine_all_labels
 from webclient.models import Image, CategoryType, CategoryLabel, User, Labeler, ImageWindow, ImageLabel, GEOSGeometry
 from webclient.models import ImageSourceType, ImageFilter, datetime, get_color, TileSet, TiledLabel, TiledGISLabel, \
-    RasterImage, VectorTileImage
+    RasterImage, VectorTileImage, SHPFile
 from webclient.commons.decorators import not_authenticated_check
 
 MODEL_SELECTED = None
+
+from django.contrib.gis.gdal import DataSource, SpatialReference
+from django.core.serializers import serialize
+from osgeo import gdal
+from pathlib import Path
+import webclient
+import geopandas
+from webclient.models import CategoryType
 
 
 @login_required
@@ -1214,6 +1222,7 @@ def get_all_tiled_labels(request):
 
     response_obj = []
     prev_boxes_wkt = request.session.get('prev_multipoly')
+    #print("prev_boxes_wkt = ", prev_boxes_wkt)
     # Well-known text representation of geometry (wkt)
     previous_boxes = MultiPolygon.from_ewkt(prev_boxes_wkt)
     new_polygon = Polygon()
@@ -1221,11 +1230,17 @@ def get_all_tiled_labels(request):
         new_polygon = new_polygon.union(polygon)
 
     _user = User.objects.filter(username=user)[0]
+
+    print("_user.is_staff = ", _user.is_staff, " _user.is_superuser", _user.is_superuser)
     if _user.is_staff or _user.is_superuser:
         query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox).filter(~Q(geometry__within=new_polygon))
     else:
-        query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox, labeler=_user).filter(
+        #query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox, labeler=_user).filter(
+        #    ~Q(geometry__within=new_polygon))
+        query_set = TiledGISLabel.objects.filter(geometry__within=current_bbox).filter(
             ~Q(geometry__within=new_polygon))
+    query_set = TiledGISLabel.objects.all()
+    #print(query_set)
 
     for tiled_label in query_set:
         response_dict = {"northeast_lat": tiled_label.northeast_Lat, "northeast_lng": tiled_label.northeast_Lng,
@@ -1277,7 +1292,7 @@ def get_histogram_for_window(request):
         y.append(round(result[0].item(i), 2))
 
     unique = str(xmin) + str(xmax) + str(ymin) + str(ymax)
-    print(unique)
+    #print(unique)
     return JsonResponse({"status": "success", "y": y, "x": x, "unique": unique}, safe=False)
 
 
@@ -1493,4 +1508,56 @@ def get_all_vectors(request):
 
     resp_obj = {"status": "success",
                 "message": vector_info}
+    return JsonResponse(resp_obj)
+
+
+def upload_shape_file(request):
+    "refer view get_all_tiled_labels"
+    print("upload_shape_file")
+    print(request)
+
+    for count, x in enumerate(request.FILES.getlist('files')):
+
+        obj = SHPFile()
+        obj.name = str(x)
+        obj.file = x
+        obj.save()
+
+        print("The path is ", obj.file.path)
+        
+        data = geopandas.read_file(obj.file.path)
+
+        data = data.to_crs("EPSG:4326")
+
+        rock = CategoryType.objects.get(category_name = "rocks")
+
+        poly_objects = []
+
+        for poly in data["geometry"]:
+            bounds = poly.bounds
+
+            tiled_label = TiledGISLabel()
+            tiled_label.northeast_Lat = bounds[1]
+            tiled_label.northeast_Lng = bounds[0]
+            tiled_label.southwest_Lat = bounds[3]
+            tiled_label.southwest_Lng = bounds[2]
+
+            tiled_label.geometry = GEOSGeometry(str(json.dumps(poly.__geo_interface__)))
+
+            options = { "color": str(rock.color), "weight": 0.5 }
+
+
+            tiled_label.label_json =  dict(type="Feature", geometry = poly.__geo_interface__, \
+                properties= { "options": options })
+            tiled_label.label_type = "P"
+            tiled_label.shp_file = obj
+            tiled_label.category = rock
+            #tiled_label.save()
+
+            poly_objects.append(tiled_label)
+        objs = TiledGISLabel.objects.bulk_create(poly_objects)
+
+    resp_obj = {"status": "success",
+                "message": "Successfully added your annotation",
+                }
     return JsonResponse(resp_obj)

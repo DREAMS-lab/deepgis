@@ -156,6 +156,13 @@ class ImageFilter(models.Model):
         return 'ImageFilter: brightness:' + str(self.brightness) + ' contrast: ' + str(self.contrast) \
                + ' saturation: ' + str(self.saturation) + ' labeler: ' + str(self.labeler)
 
+class SHPFile(models.Model):
+    name = models.CharField(max_length=250)
+    file = models.FileField(upload_to='shp_file/')
+
+    def __str__(self):
+        return str(self.name)
+
 
 class TiledLabel(models.Model):
     northeast_Lat = models.DecimalField(max_digits=17, decimal_places=14)
@@ -164,6 +171,7 @@ class TiledLabel(models.Model):
     southwest_Lng = models.DecimalField(max_digits=17, decimal_places=14)
     zoom_level = models.PositiveSmallIntegerField(default=23)
     category = models.ForeignKey(CategoryType, on_delete=models.CASCADE, max_length=100, null=True, blank=True)
+    
     label_json = JSONField()
 
     label_type_enum = (
@@ -247,6 +255,8 @@ class TiledGISLabel(models.Model):
     labeler = models.ForeignKey(Labeler, on_delete=models.CASCADE, null=True, blank=True, default=None)
     zoom_level = models.PositiveSmallIntegerField(default=23)
     category = models.ForeignKey(CategoryType, on_delete=models.CASCADE, max_length=100, null=True, blank=True)
+    shp_file = models.ForeignKey(SHPFile, on_delete=models.CASCADE, max_length=100, null=True, blank=True)
+
     label_json = JSONField()
 
     label_type_enum = (

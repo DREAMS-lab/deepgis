@@ -79,6 +79,12 @@
     Select Vector File
   </button>
 
+<form method="post", action="/webclient/upload_shp_file" enctype="multipart/form-data" >
+    {% csrf_token %}
+    <input type="file" name="files" multiple />
+    <input type="submit" value="Upload Shp File" />
+</form>
+
   <!-- Modal for Raster Images -->
   <div class="modal fade" id="rasterImageModal" tabindex="-1" aria-labelledby="rasterImageModalLabel" aria-hidden="true">
     <div class="modal-dialog">

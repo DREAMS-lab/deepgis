@@ -232,35 +232,35 @@ var map = L.map('map', {
     preferCanvas: true
 });
 
-var options = {
-    onEachFeature: function(feature, layer) {
-        if (feature.properties) {
-            layer.bindPopup(Object.keys(feature.properties).map(function(k) {
-                if(k === '__color__'){
-                    return;
-                }
-                return k + ": " + feature.properties[k];
-            }).join("<br />"), {
-                maxHeight: 200
-            });
-        }
-    },
-    style: function(feature) {
-        return {
-            opacity: 1,
-            fillOpacity: 0.7,
-            radius: 6,
-            color: feature.properties.__color__
-        }
-    },
-    pointToLayer: function(feature, latlng) {
-        return L.circleMarker(latlng, {
-            opacity: 1,
-            fillOpacity: 0.7,
-            color: feature.properties.__color__
-        });
-    }
-};
+// var options = {
+//     onEachFeature: function(feature, layer) {
+//         if (feature.properties) {
+//             layer.bindPopup(Object.keys(feature.properties).map(function(k) {
+//                 if(k === '__color__'){
+//                     return;
+//                 }
+//                 return k + ": " + feature.properties[k];
+//             }).join("<br />"), {
+//                 maxHeight: 200
+//             });
+//         }
+//     },
+//     style: function(feature) {
+//         return {
+//             opacity: 1,
+//             fillOpacity: 0.7,
+//             radius: 6,
+//             color: feature.properties.__color__
+//         }
+//     },
+//     pointToLayer: function(feature, latlng) {
+//         return L.circleMarker(latlng, {
+//             opacity: 1,
+//             fillOpacity: 0.7,
+//             color: feature.properties.__color__
+//         });
+//     }
+// };
 
 // Base map layer is a Mapbox API layer for visualization of the location
 mapbox = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
@@ -485,6 +485,12 @@ var histogram_polygons = 1;
 
 //Function for drawing shapes on the map using geoJson and label_type
 draw_shapes = function(geoJson, label_type) {
+    console.log( Object.keys(geoJson) );
+    console.log( geoJson[0] );
+
+    console.log("geoJson.properties", geoJson.properties);
+    // console.log("geoJson.properties.options", geoJson.properties.options);
+
     geoJson.properties.options.weight = 0.5;
     if (label_type == "circle" || label_type == "Circle") {
         draw_shapes_layer = L.circle([geoJson.geometry.coordinates[1], geoJson.geometry.coordinates[0]], geoJson.properties.options);
@@ -506,6 +512,7 @@ draw_shapes = function(geoJson, label_type) {
     } else {
         draw_shapes_layer = L.geoJSON(geoJson, geoJson.properties.options);
     }
+    console.log(draw_shapes_layer);
     // Attach a unique ID to this layer if the mode is in Plot Histogram.
     if ($('#DrawOrHist').hasClass('btn-success')) {
         draw_shapes_layer.bindPopup("Histogram #" + histogram_polygons).openPopup();
@@ -867,6 +874,7 @@ map.on('moveend', function(e) {
             geoData = data;
             for(j = 0; j < drawnItems.getLayers().length; j++) {}
             for(i = 0; i < geoData.length; i++) {
+                //console.log(geoData[i].geoJSON);
                 draw_shapes(geoData[i].geoJSON, geoData[i].geoJSON.type)
             }
         }
