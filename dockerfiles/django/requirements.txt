@@ -6,3 +6,4 @@ numpy
 wand
 imageio	
 simplekml
+geopandas
